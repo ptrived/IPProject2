@@ -1,0 +1,17 @@
+import java.io.IOException;
+import java.net.Socket;
+
+
+public class SimpleFTPClient {
+	static Socket client;
+	static final int portNum = 7735;
+	static final String serverHostname = "localhost";
+	
+	public static void main (String[] args){
+		try{
+			client = new Socket(serverHostname, portNum);
+		}catch(IOException e){
+			e.printStackTrace();
+		}
+	}
+}

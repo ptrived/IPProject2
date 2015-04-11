@@ -1,0 +1,12 @@
+import java.net.ServerSocket;
+
+
+public class SimpleFTPServer {
+	ServerSocket socket ;
+	static int portNum = 7735;
+	
+	
+	public static void main(String args[]){
+		
+	}
+}

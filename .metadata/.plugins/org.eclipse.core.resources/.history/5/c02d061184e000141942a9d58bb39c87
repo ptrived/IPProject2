@@ -1,0 +1,6 @@
+
+public class SimpleFTPClient {
+	public static void main (String[] args){
+		
+	}
+}
