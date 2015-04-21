@@ -1,0 +1,4 @@
+1) Explaination of Go Back N and Selective Ack ARQ : http://www.ccs-labs.org/teaching/rn/animations/gbn_sr/
+2) Wiki page for Go Back N ARQ: http://en.wikipedia.org/wiki/Go-Back-N_ARQ
+3) UDP Header part : http://stackoverflow.com/questions/20182426/udp-sockets-send-and-receive
+4) Reading a file byte by byte for rdt_send(): https://docs.oracle.com/javase/tutorial/essential/io/bytestreams.html
