@@ -6,4 +6,7 @@ public class DataPacket {
 	byte[] checksum = new byte[2];
 	byte[] type = new BigInteger("0101010101010101",2).toByteArray();
 	byte[] data;
+	public DataPacket(byte[] data) {
+		this.data = data;
+	}
 }

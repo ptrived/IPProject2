@@ -1,3 +1,9 @@
+import java.io.ByteArrayOutputStream;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
+import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,7 +31,8 @@ public class SimpleFTPClient {
 	
 	static List<Byte> window ;
 	static int lastAckRcvd;
-	static int lastPktSent;
+	static int lastByteSent;
+	//static int sequenceNum;
 	
 	/**
 	 *  
@@ -37,9 +44,51 @@ public class SimpleFTPClient {
 	 *  
 	 */
 	private static void rdt_send(){
-		
+		try {
+			FileInputStream input = new FileInputStream(filename);
+			byte[] buff = new byte[1];
+			int res = 0;
+			res = input.read(buff);
+			
+			while(res!=-1){
+				if(window.size() == windowSize){
+					//window is already full
+					continue;
+				}
+				window.add(buff[0]);		// add the byte into the window
+				
+				//check if window has data > MSS to be sent
+				if((lastByteSent % MSS)==0){
+					byte[] data = new byte[MSS];
+					for(int i=0; i<MSS; i++){
+						int index = (lastByteSent+i) % MSS;
+						data[i] = window.get(index);
+					}
+					DataPacket packet = new DataPacket(data);
+					//send this packet to the server
+					ByteArrayOutputStream baos = new ByteArrayOutputStream();
+					ObjectOutputStream oos = new ObjectOutputStream(baos);
+					oos.writeObject(packet);
+					
+					//DatagramPacket sendPacket = new DatagramPacket(packet., length, address, port)
+				}
+			}
+				
+		} catch (FileNotFoundException e) {
+			
+			e.printStackTrace();
+		} catch (IOException e) {
+			
+			e.printStackTrace();
+		}
 	}
 	
+	/**
+	 * 
+	 * Client should be invoked like this:
+	 * Simple_ftp_server server-host-name server-port# file-name N MSS 
+	 * 
+	 */
 	public static void main (String[] args){
 		try{
 			serverHostname = args[1];
@@ -82,6 +131,6 @@ public class SimpleFTPClient {
 	private static void init() {
 		window = new ArrayList<Byte>();
 		lastAckRcvd = -1;
-		lastPktSent = -1;
+		lastByteSent = -1;
 	}
 }
