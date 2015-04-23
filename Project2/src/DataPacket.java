@@ -3,7 +3,7 @@ import java.math.BigInteger;
 
 
 public class DataPacket implements Serializable{
-	byte[] sequenceNumber = new byte[4];
+	int sequenceNumber ;
 	byte[] checksum = new byte[2];
 	byte[] type = new BigInteger("0101010101010101",2).toByteArray();
 	byte[] data;
@@ -11,12 +11,15 @@ public class DataPacket implements Serializable{
 		//this.sequenceNumber = seqNum;
 		this.data = data;
 	}
-	public byte[] getSequenceNumber() {
+	
+	public int getSequenceNumber() {
 		return sequenceNumber;
 	}
-	public void setSequenceNumber(byte[] sequenceNumber) {
+
+	public void setSequenceNumber(int sequenceNumber) {
 		this.sequenceNumber = sequenceNumber;
 	}
+
 	public byte[] getChecksum() {
 		return checksum;
 	}

@@ -1,3 +1,5 @@
+import java.io.ByteArrayInputStream;
+import java.io.ObjectInputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -64,13 +66,17 @@ public class SimpleFTPServer {
 				InetAddress ipAddr = InetAddress.getLocalHost();
 				DatagramPacket packet = new DatagramPacket(buffer, buffer.length,ipAddr,portNum);
 				socket.receive(packet);
-				System.out.println("File receiving");
-				System.out.println(new String(packet.getData()));
+				ByteArrayInputStream bais = new ByteArrayInputStream(packet.getData());
+				ObjectInputStream ois = new ObjectInputStream(bais);
+				DataPacket inputPacket = (DataPacket) ois.readObject();
+				System.out.println(new String(inputPacket.getData()));
 				double r = probabilisticLossService();
 				if(r<=probabilityFactor){
 					//TODO :: packet should be discarded
 				}else{
 					//TODO :: packet is accepted and processed
+					int checksum = Utils.calcChecksum(inputPacket.getData());
+					AckHeader ackPacket = new AckHeader();
 				}
 
 			}
