@@ -3,8 +3,11 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
+import java.math.BigInteger;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -32,7 +35,8 @@ public class SimpleFTPClient {
 	static List<Byte> window ;
 	static int lastAckRcvd;
 	static int lastByteSent;
-	//static int sequenceNum;
+	static int lastByteRcvd;
+	static int sequenceNum = 0;
 	
 	/**
 	 *  
@@ -43,36 +47,56 @@ public class SimpleFTPClient {
 	 *  Implement Timeout for lost ACKs
 	 *  
 	 */
+	private static void goBackN(byte[] buff, boolean lastFlag){
+		if(lastFlag==false){
+			//TODO :: last byte read from file and needs to be sent
+		}
+		
+		if(window.size() == windowSize){
+			//window is already full
+			return;
+		}
+		window.add(buff[0]);		// add the byte into the window
+		try{
+			//check if window has data > MSS to be sent
+			if((lastByteSent % MSS)==0){
+				byte[] data = new byte[MSS];
+				for(int i=0; i<MSS; i++){
+					int index = (lastByteSent+i) % MSS;
+					data[i] = window.get(index);
+				}
+
+
+				DataPacket packet = new DataPacket(data);
+				ByteBuffer b = ByteBuffer.allocate(4);
+				b.putInt(sequenceNum);
+				packet.setSequenceNumber(b.array());
+				//send this packet to the server
+				ByteArrayOutputStream baos = new ByteArrayOutputStream();
+				ObjectOutputStream oos = new ObjectOutputStream(baos);
+				oos.writeObject(packet);
+				
+				DatagramPacket sendPacket = new DatagramPacket(baos.toByteArray(), baos.toByteArray().length);
+			}
+		}catch (IOException e) {
+
+			e.printStackTrace();
+		}
+	}
+	
 	private static void rdt_send(){
 		try {
 			FileInputStream input = new FileInputStream(filename);
 			byte[] buff = new byte[1];
 			int res = 0;
-			res = input.read(buff);
+			//res = input.read(buff);
 			
 			while(res!=-1){
-				if(window.size() == windowSize){
-					//window is already full
-					continue;
-				}
-				window.add(buff[0]);		// add the byte into the window
-				
-				//check if window has data > MSS to be sent
-				if((lastByteSent % MSS)==0){
-					byte[] data = new byte[MSS];
-					for(int i=0; i<MSS; i++){
-						int index = (lastByteSent+i) % MSS;
-						data[i] = window.get(index);
-					}
-					DataPacket packet = new DataPacket(data);
-					//send this packet to the server
-					ByteArrayOutputStream baos = new ByteArrayOutputStream();
-					ObjectOutputStream oos = new ObjectOutputStream(baos);
-					oos.writeObject(packet);
-					
-					//DatagramPacket sendPacket = new DatagramPacket(packet., length, address, port)
-				}
+				res = input.read(buff);
+				lastByteRcvd++;
+				goBackN(buff, false);
 			}
+			goBackN(null, true);
 				
 		} catch (FileNotFoundException e) {
 			
@@ -80,7 +104,7 @@ public class SimpleFTPClient {
 		} catch (IOException e) {
 			
 			e.printStackTrace();
-		}
+		} 
 	}
 	
 	/**
@@ -120,6 +144,7 @@ public class SimpleFTPClient {
 			 */
 			
 			init();
+			
 			rdt_send();
 			
 		}catch(Exception e){
@@ -132,5 +157,6 @@ public class SimpleFTPClient {
 		window = new ArrayList<Byte>();
 		lastAckRcvd = -1;
 		lastByteSent = -1;
+		lastByteRcvd = -1;
 	}
 }
