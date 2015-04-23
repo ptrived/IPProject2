@@ -48,7 +48,7 @@ public class SimpleFTPClient {
 	 *  
 	 */
 	private static void goBackN(byte[] buff, boolean lastFlag){
-		if(lastFlag==false){
+		if(lastFlag==true){
 			//TODO :: last byte read from file and needs to be sent
 		}
 		
@@ -59,10 +59,10 @@ public class SimpleFTPClient {
 		window.add(buff[0]);		// add the byte into the window
 		try{
 			//check if window has data > MSS to be sent
-			if((lastByteSent % MSS)==0){
+			if(((lastByteRcvd+1) % MSS)==0){
 				byte[] data = new byte[MSS];
 				for(int i=0; i<MSS; i++){
-					int index = (lastByteSent+i) % MSS;
+					int index = (++lastByteSent+i) % MSS;
 					data[i] = window.get(index);
 				}
 
@@ -75,8 +75,9 @@ public class SimpleFTPClient {
 				ByteArrayOutputStream baos = new ByteArrayOutputStream();
 				ObjectOutputStream oos = new ObjectOutputStream(baos);
 				oos.writeObject(packet);
-				
-				DatagramPacket sendPacket = new DatagramPacket(baos.toByteArray(), baos.toByteArray().length);
+				InetAddress ipAddr = InetAddress.getLocalHost();
+				DatagramPacket sendPacket = new DatagramPacket(baos.toByteArray(), baos.toByteArray().length,ipAddr,7735);
+				client.send(sendPacket);
 			}
 		}catch (IOException e) {
 
@@ -115,15 +116,21 @@ public class SimpleFTPClient {
 	 */
 	public static void main (String[] args){
 		try{
-			serverHostname = args[1];
-			int portInput = Integer.parseInt(args[2]);
-			if(portInput!=portNum){
-				System.out.println("Invalid Server Port Number");
-				System.exit(1);
-			}
-			filename = args[3];
-			windowSize = Integer.parseInt(args[4]);
-			MSS = Integer.parseInt(args[5]);
+//			serverHostname = args[1];
+//			int portInput = Integer.parseInt(args[2]);
+//			if(portInput!=portNum){
+//				System.out.println("Invalid Server Port Number");
+//				System.exit(1);
+//			}
+//			filename = args[3];
+//			windowSize = Integer.parseInt(args[4]);
+//			MSS = Integer.parseInt(args[5]);
+			serverHostname = "localhost";
+			int portInput = 7735;
+			filename = "F:\\123.txt";
+			windowSize = 128;
+			MSS = 16;
+			
 			
 			client = new DatagramSocket();
 			System.out.println("Connected to server");
@@ -146,6 +153,9 @@ public class SimpleFTPClient {
 			init();
 			
 			rdt_send();
+			while(true){
+				//System.out.println("File Sent");
+			}
 			
 		}catch(Exception e){
 			e.printStackTrace();
