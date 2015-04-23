@@ -6,6 +6,7 @@ import java.io.ObjectOutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -36,7 +37,7 @@ public class SimpleFTPClient implements Runnable{
 	static byte[] mssData;
 	static int mssCount;
 	static int lastAckRcvd;
-	static int lastByteSent;
+	static int lastMSSSent;
 	static int lastByteRcvd;
 	static int sequenceNum = 0;
 	
@@ -61,56 +62,31 @@ public class SimpleFTPClient implements Runnable{
 			if(mssCount==MSS){
 				window.add(mssData);
 				mssCount = 0;
+				lastMSSSent++;
+				
 				DataPacket data = new DataPacket(mssData);
 				data.setSequenceNumber(++sequenceNum);
-				
+				byte[] dataArr = Utils.serializePacket(data);
+				InetAddress ipAddr;
+				try {
+					ipAddr = InetAddress.getLocalHost();
+					DatagramPacket dataPacket = new DatagramPacket(dataArr, dataArr.length,ipAddr,7735);
+					client.send(dataPacket);
+				} catch (UnknownHostException e) {
+					e.printStackTrace();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
 			}
 		}
 	}
-	/*private static void goBackN(byte[] buff, boolean lastFlag){
-		if(lastFlag==true){
-			//TODO :: last byte read from file and needs to be sent
-		}
-
-		if(window.size() == windowSize){
-			//window is already full
-			return;
-		}
-		window.add(buff[0]);		// add the byte into the window
-		try{
-			//check if window has data > MSS to be sent
-			if(((lastByteRcvd+1) % MSS)==0){
-				byte[] data = new byte[MSS];
-				for(int i=0; i<MSS; i++){
-					int index = (++lastByteSent+i) % MSS;
-					data[i] = window.get(index);
-				}
-
-
-				DataPacket packet = new DataPacket(data);
-				ByteBuffer b = ByteBuffer.allocate(4);
-				b.putInt(sequenceNum);
-				packet.setSequenceNumber(b.array());
-				//send this packet to the server
-				ByteArrayOutputStream baos = new ByteArrayOutputStream();
-				ObjectOutputStream oos = new ObjectOutputStream(baos);
-				oos.writeObject(packet);
-				InetAddress ipAddr = InetAddress.getLocalHost();
-				DatagramPacket sendPacket = new DatagramPacket(baos.toByteArray(), baos.toByteArray().length,ipAddr,7735);
-				client.send(sendPacket);
-			}
-		}catch (IOException e) {
-
-			e.printStackTrace();
-		}
-	}*/
+	
 
 	private static void rdt_send(){
 		try {
 			FileInputStream input = new FileInputStream(filename);
 			byte[] buff = new byte[1];
 			int res = 0;
-			//res = input.read(buff);
 
 			while(res!=-1){
 				res = input.read(buff);
@@ -150,26 +126,10 @@ public class SimpleFTPClient implements Runnable{
 			filename = "F:\\123.txt";
 			windowSize = 128;
 			MSS = 16;
-
-
 			client = new DatagramSocket();
 			System.out.println("Connected to server");
 			simpleClient = new SimpleFTPClient();
-			/*
-			 * InetAddress IPAddress = InetAddress.getByName("localhost");
-			 * byte[] sendData = new byte[1024];
-			 * byte[] receiveData = new byte[1024];
-			 * String sentence = inFromUser.readLine();
-			 * sendData = sentence.getBytes();
-			 * DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, 9876);
-			 * clientSocket.send(sendPacket);
-			 * DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
-			 * clientSocket.receive(receivePacket);
-			 * String modifiedSentence = new String(receivePacket.getData());
-			 * System.out.println("FROM SERVER:" + modifiedSentence);
-			 * clientSocket.close();
-			 */
-
+			
 			init();
 			rdt_send();
 		}catch(Exception e){
@@ -183,8 +143,8 @@ public class SimpleFTPClient implements Runnable{
 		window = new ArrayList<byte[]>();
 		mssCount = 0;
 		lastAckRcvd = -1;
-		lastByteSent = -1;
-		lastByteRcvd = -1;
+		lastMSSSent = -1;
+		//lastByteRcvd = -1;
 
 		Thread t = new Thread(simpleClient);
 		t.start();
@@ -193,10 +153,19 @@ public class SimpleFTPClient implements Runnable{
 	@Override
 	public void run() {
 		try {
-			byte[] buffer = new byte[1000];
-			DatagramPacket ackPacket = new DatagramPacket(buffer, buffer.length);
-
-			client.receive(ackPacket);
+			while(true){
+				System.out.println("Thread running to receive ACK in client");
+				byte[] buffer = new byte[1000];
+				InetAddress ipAddr = InetAddress.getLocalHost();
+				DatagramPacket ackPacket = new DatagramPacket(buffer, buffer.length);
+				client.receive(ackPacket);
+				AckHeader ackData = (AckHeader) Utils.deserializePacket(ackPacket.getData());
+				System.out.println(ackData.getSequenceNumber());
+				lastAckRcvd = ackData.getSequenceNumber();
+				System.out.println("Last Ack Rcvd = " + lastAckRcvd);
+				//TODO :: slide the window
+			}
+			
 		} catch (IOException e) {
 
 			e.printStackTrace();

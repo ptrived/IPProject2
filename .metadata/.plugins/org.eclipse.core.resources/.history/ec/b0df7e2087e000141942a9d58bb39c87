@@ -1,8 +1,0 @@
-import java.math.BigInteger;
-
-
-public class AckHeader {
-	byte[] sequenceNumber = new byte[4];
-	byte[] checksum = new byte[2];
-	byte[] type = new BigInteger("1010101010101010",2).toByteArray();
-}

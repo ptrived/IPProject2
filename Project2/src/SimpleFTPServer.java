@@ -1,5 +1,3 @@
-import java.io.ByteArrayInputStream;
-import java.io.ObjectInputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -31,6 +29,7 @@ public class SimpleFTPServer {
 	static String filename;
 	static double probabilityFactor;
 
+	static int nextSeqNum;
 
 	private static double probabilisticLossService(){
 		double num = 0;
@@ -52,7 +51,9 @@ public class SimpleFTPServer {
 			//				System.exit(1);
 			//			}
 			filename = "F:\\124.txt";
-			probabilityFactor = 0.05;
+			probabilityFactor = 0.005;
+
+			nextSeqNum = 1;
 			if(probabilityFactor < 0 || probabilityFactor > 1){
 				System.out.println("Probability Factor is not within the valid range[0-1]");
 				System.exit(1);
@@ -64,19 +65,34 @@ public class SimpleFTPServer {
 				int bufferSize = 1024;			//TODO ::  will have to modify it later based on client's MSS value
 				byte[] buffer = new byte[bufferSize];
 				InetAddress ipAddr = InetAddress.getLocalHost();
-				DatagramPacket packet = new DatagramPacket(buffer, buffer.length,ipAddr,portNum);
+				DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
 				socket.receive(packet);
-				ByteArrayInputStream bais = new ByteArrayInputStream(packet.getData());
-				ObjectInputStream ois = new ObjectInputStream(bais);
-				DataPacket inputPacket = (DataPacket) ois.readObject();
-				System.out.println(new String(inputPacket.getData()));
+
+				DataPacket data = (DataPacket) Utils.deserializePacket(packet.getData());
 				double r = probabilisticLossService();
+				System.out.println("loss factor = "+ r);
 				if(r<=probabilityFactor){
-					//TODO :: packet should be discarded
+					System.out.println("Packet loss, Sequence Number = "+ data.getSequenceNumber());
 				}else{
-					//TODO :: packet is accepted and processed
-					int checksum = Utils.calcChecksum(inputPacket.getData());
-					AckHeader ackPacket = new AckHeader();
+					int checksum = Utils.calcChecksum(data.getData());					
+					//TODO :: calculate checksum and compare
+
+					int rcvdSeqNum = data.getSequenceNumber();
+					System.out.println("Received Seq Num : "+rcvdSeqNum);
+					if(rcvdSeqNum == nextSeqNum){
+						//TODO: Write to file
+						AckHeader ackData = new AckHeader();
+						ackData.setSequenceNumber(++nextSeqNum);
+						byte[] ack = Utils.serializeAck(ackData);
+
+						DatagramPacket ackPacket = new DatagramPacket(ack, ack.length,packet.getAddress(),packet.getPort());
+						socket.send(ackPacket);
+						System.out.println("Server sent ack for " +nextSeqNum);
+					}
+					else{
+						System.out.println();
+					}
+
 				}
 
 			}

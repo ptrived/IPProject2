@@ -1,4 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<session version="1.0">
-<refactoring comment="Rename type &apos;DataHeader&apos; to &apos;DataPacket&apos;&#x0D;&#x0A;- Original project: &apos;Project2&apos;&#x0D;&#x0A;- Original element: &apos;DataHeader&apos;&#x0D;&#x0A;- Renamed element: &apos;DataPacket&apos;&#x0D;&#x0A;- Update references to refactored element&#x0D;&#x0A;- Update textual occurrences in comments and strings" description="Rename type &apos;DataHeader&apos;" flags="589830" id="org.eclipse.jdt.ui.rename.type" input="/src&lt;{DataHeader.java[DataHeader" matchStrategy="1" name="DataPacket" qualified="false" references="true" similarDeclarations="false" stamp="1428783929136" textual="false" version="1.0"/>
-</session>
