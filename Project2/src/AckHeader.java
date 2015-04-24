@@ -2,6 +2,7 @@ import java.io.Serializable;
 import java.math.BigInteger;
 
 
+@SuppressWarnings("serial")
 public class AckHeader implements Serializable{
 	int sequenceNumber;
 	byte[] checksum = new BigInteger("0000000000000000",2).toByteArray();
