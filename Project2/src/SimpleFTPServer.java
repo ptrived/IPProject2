@@ -54,7 +54,7 @@ public class SimpleFTPServer {
 			filename = "F:\\124.txt";
 			FileOutputStream output = new FileOutputStream(filename);
 			
-			probabilityFactor = 0.5;
+			probabilityFactor = 0.15;
 			
 			nextSeqNum = 0;
 			if(probabilityFactor < 0 || probabilityFactor > 1){
@@ -83,7 +83,6 @@ public class SimpleFTPServer {
 					int rcvdSeqNum = data.getSequenceNumber();
 					System.out.println("Received Seq Num : "+rcvdSeqNum);
 					if(rcvdSeqNum == nextSeqNum){
-						//TODO: Write to file
 						output.write(data.getData());
 						AckHeader ackData = new AckHeader();
 						ackData.setSequenceNumber(++nextSeqNum);
@@ -92,6 +91,10 @@ public class SimpleFTPServer {
 						DatagramPacket ackPacket = new DatagramPacket(ack, ack.length,packet.getAddress(),packet.getPort());
 						socket.send(ackPacket);
 						System.out.println("Server sent ack for " +nextSeqNum);
+						if(data.getData().length==0){
+							System.out.println("File copied to disk");
+							System.exit(1);
+						}
 					}
 					else{
 						System.out.println("Next Sequence Number = " + nextSeqNum);

@@ -23,7 +23,7 @@ public class TimerTaskUtility extends TimerTask{
 	public static void main(String[] args){
 		TimerTask util = new TimerTaskUtility();
 		Timer timer = new Timer(true);
-		timer.schedule(util, 5000);
+		timer.scheduleAtFixedRate(util, 1000, 1000);
 		//timer.scheduleAtFixedRate(util,  1000);
 		System.out.println("Timer task begins !!"+new Date());
 		try {

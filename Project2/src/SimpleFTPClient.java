@@ -6,6 +6,7 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -73,29 +74,12 @@ public class SimpleFTPClient implements Runnable{
 	 *  Implement Timeout for lost ACKs
 	 *  
 	 */
-	private static void goBackN(byte buff[], boolean lastFlag){
-		
-		while(window.size()>=windowSize){
-				System.out.println("In While Loop : Window Full");
-			//size = window.size();
-//			List<DataPacket> list = new ArrayList<DataPacket>();
-//			list.addAll(window);
-//			//do nothing
-//			for(DataPacket packet : list){
-//				byte[] dataArr = Utils.serializePacket(packet);
-//				InetAddress ipAddr;
-//				try {
-//					ipAddr = InetAddress.getLocalHost();
-//					DatagramPacket dataPacket = new DatagramPacket(dataArr, dataArr.length,ipAddr,7735);
-//					client.send(dataPacket);				
-//				} catch (UnknownHostException e) {
-//					e.printStackTrace();
-//				} catch (IOException e) {
-//					e.printStackTrace();
-//				}
-//			}
+	private static int goBackN(byte buff[], boolean lastFlag){
+		//int result = 0;
+		if(window.size()==windowSize){
+			return 0;
 		}
-		System.out.println("Out of while");
+
 		if(lastFlag == true && mssCount > 0){
 			//send the last packet
 			mssCount = 0;
@@ -103,6 +87,7 @@ public class SimpleFTPClient implements Runnable{
 
 			DataPacket data = new DataPacket(mssData);
 			data.setSequenceNumber(sequenceNum++);
+			window.add(data);
 			byte[] dataArr = Utils.serializePacket(data);
 			InetAddress ipAddr;
 			try {
@@ -115,6 +100,27 @@ public class SimpleFTPClient implements Runnable{
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
+			
+			//send -1 
+			mssData = new byte[0];
+			//lastPktSent++;
+			data = new DataPacket(mssData);
+			data.setSequenceNumber(sequenceNum++);
+			window.add(data);
+			dataArr = Utils.serializePacket(data);
+		
+			try {
+				ipAddr = InetAddress.getLocalHost();
+				DatagramPacket dataPacket = new DatagramPacket(dataArr, dataArr.length,ipAddr,7735);
+				client.send(dataPacket);
+				System.out.println("Client done with sending the last packet to server");
+			} catch (UnknownHostException e) {
+				e.printStackTrace();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			
+			
 		}
 		else{
 			mssData[mssCount++] = buff[0];
@@ -140,9 +146,10 @@ public class SimpleFTPClient implements Runnable{
 				if(lastPktSent==0){
 					timerTask = new GoBackNTimerTask();
 					timer = new Timer(true);
-					timer.schedule(timerTask, 5000);
+					timer.scheduleAtFixedRate(timerTask,5000, 5000);
+					//timer.schedule(timerTask, 5000);
 				}
-				while(lastPktSent - lastAckRcvd < windowSize){
+				/*while(lastPktSent - lastAckRcvd < windowSize){
 					List<DataPacket> list = new ArrayList<DataPacket>();
 					list.addAll(window);
 					//do nothing
@@ -159,9 +166,10 @@ public class SimpleFTPClient implements Runnable{
 							e.printStackTrace();
 						}
 					}
-				}
+				}*/
 			}
 		}
+		return 1;
 	}
 
 
@@ -174,7 +182,10 @@ public class SimpleFTPClient implements Runnable{
 			while(res!=-1){
 				res = input.read(buff);
 				//lastByteRcvd++;
-				goBackN(buff, false);
+				while(goBackN(buff, false)==0){
+					
+				}
+				//goBackN(buff, false);
 			}
 			System.out.println("File Read");
 			goBackN(null, true);
@@ -233,7 +244,7 @@ public class SimpleFTPClient implements Runnable{
 		//lastByteRcvd = -1;
 
 		Thread t = new Thread(simpleClient);
-		t.setDaemon(true);
+		//t.setDaemon(true);
 		t.start();
 	}
 
@@ -249,7 +260,13 @@ public class SimpleFTPClient implements Runnable{
 				AckHeader ackData = (AckHeader) Utils.deserializePacket(ackPacket.getData());
 				System.out.println(ackData.getSequenceNumber());
 				int ackRcvd = ackData.getSequenceNumber();
+				
+				if(ackRcvd == lastPktSent ){
+					System.out.println("File transfer complete");
+					System.exit(1);
+				}
 				if(ackRcvd > lastAckRcvd){
+					
 					lastAckRcvd = ackRcvd;
 					System.out.println("Last Ack Rcvd = " + lastAckRcvd);
 					timer.cancel();
@@ -262,7 +279,8 @@ public class SimpleFTPClient implements Runnable{
 					}
 					timerTask = new GoBackNTimerTask();
 					timer = new Timer(true);
-					timer.schedule(timerTask, 5000);
+					timer.scheduleAtFixedRate(timerTask, 5000, 5000);
+					//timer.schedule(timerTask, 5000);
 					//System.out.println("Out of while after receiving ack");
 				}
 			}
