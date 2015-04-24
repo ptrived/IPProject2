@@ -2,6 +2,7 @@ import java.io.Serializable;
 import java.math.BigInteger;
 
 
+@SuppressWarnings("serial")
 public class DataPacket implements Serializable{
 	int sequenceNumber ;
 	byte[] checksum = new byte[2];
