@@ -7,7 +7,31 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 
+class GoBackNTimerTask extends TimerTask{
+
+	@Override
+	public void run() {
+		// TODO :: resend the packets
+		System.out.println("Timer expired .. resend packets");
+		for(DataPacket packet : SimpleFTPClient.window){
+			byte[] dataArr = Utils.serializePacket(packet);
+			InetAddress ipAddr;
+			try {
+				ipAddr = InetAddress.getLocalHost();
+				DatagramPacket dataPacket = new DatagramPacket(dataArr, dataArr.length,ipAddr,7735);
+				SimpleFTPClient.client.send(dataPacket);				
+			} catch (UnknownHostException e) {
+				e.printStackTrace();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
+}
 /*
  * 
  * command to start the client: simple_ftp_server server_host_name server-port file-name N MSS
@@ -30,15 +54,16 @@ public class SimpleFTPClient implements Runnable{
 	static int windowSize ;
 	static int MSS;
 
-	static List<byte[]> window ;
+	static List<DataPacket> window ;
 	static byte[] mssData;
 	static int mssCount;
 	static int lastAckRcvd;
-	static int lastMSSSent;
+	static int lastPktSent;
 	static int firstPktInWindow;
 	//static int lastByteRcvd;
-	static int sequenceNum = 0;
-	
+	static int sequenceNum;
+	static TimerTask timerTask ;
+	static Timer timer;
 	/**
 	 *  
 	 *  Reads data byte by byte from the file
@@ -49,16 +74,35 @@ public class SimpleFTPClient implements Runnable{
 	 *  
 	 */
 	private static void goBackN(byte buff[], boolean lastFlag){
+		
 		while(window.size()>=windowSize){
-			//do nothing
+				System.out.println("In While Loop : Window Full");
+			//size = window.size();
+//			List<DataPacket> list = new ArrayList<DataPacket>();
+//			list.addAll(window);
+//			//do nothing
+//			for(DataPacket packet : list){
+//				byte[] dataArr = Utils.serializePacket(packet);
+//				InetAddress ipAddr;
+//				try {
+//					ipAddr = InetAddress.getLocalHost();
+//					DatagramPacket dataPacket = new DatagramPacket(dataArr, dataArr.length,ipAddr,7735);
+//					client.send(dataPacket);				
+//				} catch (UnknownHostException e) {
+//					e.printStackTrace();
+//				} catch (IOException e) {
+//					e.printStackTrace();
+//				}
+//			}
 		}
+		System.out.println("Out of while");
 		if(lastFlag == true && mssCount > 0){
 			//send the last packet
 			mssCount = 0;
-			lastMSSSent++;
-			
+			lastPktSent++;
+
 			DataPacket data = new DataPacket(mssData);
-			data.setSequenceNumber(++sequenceNum);
+			data.setSequenceNumber(sequenceNum++);
 			byte[] dataArr = Utils.serializePacket(data);
 			InetAddress ipAddr;
 			try {
@@ -75,12 +119,12 @@ public class SimpleFTPClient implements Runnable{
 		else{
 			mssData[mssCount++] = buff[0];
 			if(mssCount==MSS){
-				window.add(mssData);
-				mssCount = 0;
-				lastMSSSent++;
-				
 				DataPacket data = new DataPacket(mssData);
-				data.setSequenceNumber(++sequenceNum);
+				data.setSequenceNumber(sequenceNum++);
+				window.add(data);
+				mssCount = 0;
+				lastPktSent++;		
+
 				byte[] dataArr = Utils.serializePacket(data);
 				InetAddress ipAddr;
 				try {
@@ -92,11 +136,34 @@ public class SimpleFTPClient implements Runnable{
 					e.printStackTrace();
 				} catch (IOException e) {
 					e.printStackTrace();
+				}				
+				if(lastPktSent==0){
+					timerTask = new GoBackNTimerTask();
+					timer = new Timer(true);
+					timer.schedule(timerTask, 5000);
+				}
+				while(lastPktSent - lastAckRcvd < windowSize){
+					List<DataPacket> list = new ArrayList<DataPacket>();
+					list.addAll(window);
+					//do nothing
+					for(DataPacket packet : list){
+						byte[] dataArr1 = Utils.serializePacket(packet);
+						//InetAddress ipAddr1;
+						try {
+							ipAddr = InetAddress.getLocalHost();
+							DatagramPacket dataPacket = new DatagramPacket(dataArr1, dataArr1.length,ipAddr,7735);
+							client.send(dataPacket);				
+						} catch (UnknownHostException e) {
+							e.printStackTrace();
+						} catch (IOException e) {
+							e.printStackTrace();
+						}
+					}
 				}
 			}
 		}
 	}
-	
+
 
 	private static void rdt_send(){
 		try {
@@ -109,6 +176,7 @@ public class SimpleFTPClient implements Runnable{
 				//lastByteRcvd++;
 				goBackN(buff, false);
 			}
+			System.out.println("File Read");
 			goBackN(null, true);
 
 		} catch (FileNotFoundException e) {
@@ -140,8 +208,9 @@ public class SimpleFTPClient implements Runnable{
 			serverHostname = "localhost";
 			int portInput = 7735;
 			filename = "F:\\123.txt";
-			windowSize = 128;
+			windowSize = 4;
 			MSS = 16;
+			sequenceNum =0;
 			client = new DatagramSocket();
 			System.out.println("Connected to server");
 			simpleClient = new SimpleFTPClient();
@@ -156,14 +225,15 @@ public class SimpleFTPClient implements Runnable{
 
 	private static void init() {
 		mssData = new byte[MSS];
-		window = new ArrayList<byte[]>();
+		window = new ArrayList<DataPacket>();
 		mssCount = 0;
 		lastAckRcvd = -1;
-		lastMSSSent = -1;
+		lastPktSent = -1;
 		firstPktInWindow = 0;
 		//lastByteRcvd = -1;
 
 		Thread t = new Thread(simpleClient);
+		t.setDaemon(true);
 		t.start();
 	}
 
@@ -178,17 +248,25 @@ public class SimpleFTPClient implements Runnable{
 				client.receive(ackPacket);
 				AckHeader ackData = (AckHeader) Utils.deserializePacket(ackPacket.getData());
 				System.out.println(ackData.getSequenceNumber());
-				lastAckRcvd = ackData.getSequenceNumber();
-				System.out.println("Last Ack Rcvd = " + lastAckRcvd);
-				//TODO :: slide the window
-				
-				while(firstPktInWindow < lastAckRcvd && window.size()>0){
-					window.remove(0);
-					firstPktInWindow++;
+				int ackRcvd = ackData.getSequenceNumber();
+				if(ackRcvd > lastAckRcvd){
+					lastAckRcvd = ackRcvd;
+					System.out.println("Last Ack Rcvd = " + lastAckRcvd);
+					timer.cancel();
+					//TODO :: slide the window
+
+					while(firstPktInWindow < lastAckRcvd && window.size()>0){
+						window.remove(0);
+						System.out.println("Window Size :"+ window.size());
+						firstPktInWindow++;
+					}
+					timerTask = new GoBackNTimerTask();
+					timer = new Timer(true);
+					timer.schedule(timerTask, 5000);
+					//System.out.println("Out of while after receiving ack");
 				}
-				System.out.println("Out of while after receiving ack");
 			}
-			
+
 		} catch (IOException e) {
 
 			e.printStackTrace();

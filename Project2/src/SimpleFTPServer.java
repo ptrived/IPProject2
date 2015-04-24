@@ -54,9 +54,9 @@ public class SimpleFTPServer {
 			filename = "F:\\124.txt";
 			FileOutputStream output = new FileOutputStream(filename);
 			
-			probabilityFactor = 0.005;
+			probabilityFactor = 0.5;
 			
-			nextSeqNum = 1;
+			nextSeqNum = 0;
 			if(probabilityFactor < 0 || probabilityFactor > 1){
 				System.out.println("Probability Factor is not within the valid range[0-1]");
 				System.exit(1);
