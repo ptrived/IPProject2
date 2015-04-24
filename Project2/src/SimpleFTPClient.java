@@ -65,6 +65,7 @@ public class SimpleFTPClient implements Runnable{
 				ipAddr = InetAddress.getLocalHost();
 				DatagramPacket dataPacket = new DatagramPacket(dataArr, dataArr.length,ipAddr,7735);
 				client.send(dataPacket);
+				System.out.println("Client done with sending the last packet to server");
 			} catch (UnknownHostException e) {
 				e.printStackTrace();
 			} catch (IOException e) {
@@ -86,6 +87,7 @@ public class SimpleFTPClient implements Runnable{
 					ipAddr = InetAddress.getLocalHost();
 					DatagramPacket dataPacket = new DatagramPacket(dataArr, dataArr.length,ipAddr,7735);
 					client.send(dataPacket);
+					mssData = new byte[MSS];
 				} catch (UnknownHostException e) {
 					e.printStackTrace();
 				} catch (IOException e) {
@@ -180,10 +182,11 @@ public class SimpleFTPClient implements Runnable{
 				System.out.println("Last Ack Rcvd = " + lastAckRcvd);
 				//TODO :: slide the window
 				
-				while(firstPktInWindow < lastAckRcvd){
+				while(firstPktInWindow < lastAckRcvd && window.size()>0){
 					window.remove(0);
 					firstPktInWindow++;
 				}
+				System.out.println("Out of while after receiving ack");
 			}
 			
 		} catch (IOException e) {

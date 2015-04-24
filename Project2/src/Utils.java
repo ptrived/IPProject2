@@ -5,10 +5,38 @@ import java.io.ObjectOutputStream;
 
 
 public class Utils {
-	public static int calcChecksum(byte[] data){
-		int result = 0;
+	public static long calcChecksum(byte[] buff){
+	    byte[] buf = { (byte) 0xed, 0x2A, 0x44, 0x10, 0x03, 0x30};
+	    int length = buf.length;
+	    int i = 0;
 
-		return result;
+	    long sum = 0;
+	    long data = 0;
+	    while (length > 1) {
+	        data = 0;
+	        data = (((buf[i]) << 8) | ((buf[i + 1]) & 0xFF));
+
+	        sum += data;
+	        if ((sum & 0xFFFF0000) > 0) {
+	            sum = sum & 0xFFFF;
+	            sum += 1;
+	        }
+
+	        i += 2;
+	        length -= 2;
+	    }
+
+	    if (length > 0) {
+	        sum += (buf[i] << 8);
+	        // sum += buffer[i];
+	        if ((sum & 0xFFFF0000) > 0) {
+	            sum = sum & 0xFFFF;
+	            sum += 1;
+	        }
+	    }
+	    sum = ~sum;
+	    sum = sum & 0xFFFF;
+	    return sum;
 	}
 
 	public static Object deserializePacket(byte[] packetData)

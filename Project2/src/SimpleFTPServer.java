@@ -1,3 +1,4 @@
+import java.io.FileOutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -51,8 +52,10 @@ public class SimpleFTPServer {
 			//				System.exit(1);
 			//			}
 			filename = "F:\\124.txt";
+			FileOutputStream output = new FileOutputStream(filename);
+			
 			probabilityFactor = 0.005;
-
+			
 			nextSeqNum = 1;
 			if(probabilityFactor < 0 || probabilityFactor > 1){
 				System.out.println("Probability Factor is not within the valid range[0-1]");
@@ -60,7 +63,7 @@ public class SimpleFTPServer {
 			}
 			socket = new DatagramSocket(portNum);
 			System.out.println("Server is up");
-
+			System.out.println(Utils.calcChecksum(null));
 			while(true){
 				int bufferSize = 1024;			//TODO ::  will have to modify it later based on client's MSS value
 				byte[] buffer = new byte[bufferSize];
@@ -74,13 +77,14 @@ public class SimpleFTPServer {
 				if(r<=probabilityFactor){
 					System.out.println("Packet loss, Sequence Number = "+ data.getSequenceNumber());
 				}else{
-					int checksum = Utils.calcChecksum(data.getData());					
+					long checksum = Utils.calcChecksum(data.getData());					
 					//TODO :: calculate checksum and compare
 
 					int rcvdSeqNum = data.getSequenceNumber();
 					System.out.println("Received Seq Num : "+rcvdSeqNum);
 					if(rcvdSeqNum == nextSeqNum){
 						//TODO: Write to file
+						output.write(data.getData());
 						AckHeader ackData = new AckHeader();
 						ackData.setSequenceNumber(++nextSeqNum);
 						byte[] ack = Utils.serializeAck(ackData);
