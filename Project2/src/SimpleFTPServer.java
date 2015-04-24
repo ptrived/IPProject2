@@ -90,7 +90,7 @@ public class SimpleFTPServer {
 						System.out.println("Server sent ack for " +nextSeqNum);
 					}
 					else{
-						System.out.println();
+						System.out.println("Next Sequence Number = " + nextSeqNum);
 					}
 
 				}

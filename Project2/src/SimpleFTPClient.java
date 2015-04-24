@@ -1,13 +1,10 @@
-import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -38,7 +35,8 @@ public class SimpleFTPClient implements Runnable{
 	static int mssCount;
 	static int lastAckRcvd;
 	static int lastMSSSent;
-	static int lastByteRcvd;
+	static int firstPktInWindow;
+	//static int lastByteRcvd;
 	static int sequenceNum = 0;
 	
 	/**
@@ -56,6 +54,22 @@ public class SimpleFTPClient implements Runnable{
 		}
 		if(lastFlag == true && mssCount > 0){
 			//send the last packet
+			mssCount = 0;
+			lastMSSSent++;
+			
+			DataPacket data = new DataPacket(mssData);
+			data.setSequenceNumber(++sequenceNum);
+			byte[] dataArr = Utils.serializePacket(data);
+			InetAddress ipAddr;
+			try {
+				ipAddr = InetAddress.getLocalHost();
+				DatagramPacket dataPacket = new DatagramPacket(dataArr, dataArr.length,ipAddr,7735);
+				client.send(dataPacket);
+			} catch (UnknownHostException e) {
+				e.printStackTrace();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 		}
 		else{
 			mssData[mssCount++] = buff[0];
@@ -90,7 +104,7 @@ public class SimpleFTPClient implements Runnable{
 
 			while(res!=-1){
 				res = input.read(buff);
-				lastByteRcvd++;
+				//lastByteRcvd++;
 				goBackN(buff, false);
 			}
 			goBackN(null, true);
@@ -129,7 +143,7 @@ public class SimpleFTPClient implements Runnable{
 			client = new DatagramSocket();
 			System.out.println("Connected to server");
 			simpleClient = new SimpleFTPClient();
-			
+			//simpleClient.sequenceNum = 0;
 			init();
 			rdt_send();
 		}catch(Exception e){
@@ -144,6 +158,7 @@ public class SimpleFTPClient implements Runnable{
 		mssCount = 0;
 		lastAckRcvd = -1;
 		lastMSSSent = -1;
+		firstPktInWindow = 0;
 		//lastByteRcvd = -1;
 
 		Thread t = new Thread(simpleClient);
@@ -164,6 +179,11 @@ public class SimpleFTPClient implements Runnable{
 				lastAckRcvd = ackData.getSequenceNumber();
 				System.out.println("Last Ack Rcvd = " + lastAckRcvd);
 				//TODO :: slide the window
+				
+				while(firstPktInWindow < lastAckRcvd){
+					window.remove(0);
+					firstPktInWindow++;
+				}
 			}
 			
 		} catch (IOException e) {
