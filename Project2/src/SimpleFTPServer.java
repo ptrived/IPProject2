@@ -1,7 +1,8 @@
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
-import java.net.InetAddress;
+import java.nio.ByteBuffer;
 
 
 /**
@@ -31,7 +32,7 @@ public class SimpleFTPServer {
 	static double probabilityFactor;
 
 	static int nextSeqNum;
-	static int MSS;
+	static int MSS=0;
 
 	private static double probabilisticLossService(){
 		double num = 0;
@@ -39,6 +40,7 @@ public class SimpleFTPServer {
 		return num;
 	}
 	public static void main(String args[]){
+		FileOutputStream output = null;
 		try {
 			//int serverPort = Integer.parseInt(args[1]);	// this should always be 7735
 			int serverPort = 7735;
@@ -53,7 +55,7 @@ public class SimpleFTPServer {
 			//				System.exit(1);
 			//			}
 			filename = "F:\\124.txt";
-			FileOutputStream output = new FileOutputStream(filename);
+			output = new FileOutputStream(filename);
 
 			probabilityFactor = 0.15;
 
@@ -64,29 +66,30 @@ public class SimpleFTPServer {
 			}
 			socket = new DatagramSocket(portNum);
 			System.out.println("Server is up");
-			MSS = 2048;
-			System.out.println(Utils.calcChecksum(null));
+			//MSS = 2048;
+			//System.out.println(Utils.calcChecksum(null));
 			while(true){
 				int bufferSize = 4096;
 				//TODO ::  will have to modify it later based on client's MSS value
 				byte[] buffer = new byte[bufferSize];
-				InetAddress ipAddr = InetAddress.getLocalHost();
+				//InetAddress ipAddr = InetAddress.getLocalHost();
 				DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
 				socket.receive(packet);
-				//MSS = packet.getData().length;				
+				//System.out.println(packet.getLength());
+				if(MSS==0){
+					MSS = packet.getLength()-153;
+				}
 				//System.out.println(MSS);
 				DataPacket data = (DataPacket) Utils.deserializePacket(packet.getData());
 				double r = probabilisticLossService();
 				//System.out.println("loss factor = "+ r);
 				if(r<=probabilityFactor){
 					System.out.println("Packet loss, Sequence Number = "+ data.getSequenceNumber());
-				}else{
-					long checksum = Utils.calcChecksum(data.getData());					
+				}else{									
 					//TODO :: calculate checksum and compare
-
 					int rcvdSeqNum = data.getSequenceNumber();
 					//System.out.println("Received Seq Num : "+rcvdSeqNum);
-					if(rcvdSeqNum == nextSeqNum){
+					if(rcvdSeqNum == nextSeqNum){									
 						if(data.getData().length==0){
 							nextSeqNum=nextSeqNum+MSS;
 							AckHeader ackData = new AckHeader();
@@ -98,8 +101,10 @@ public class SimpleFTPServer {
 							System.out.println("File copied to disk");	
 							System.exit(1);
 						}
-						output.write(data.getData());
-						nextSeqNum=nextSeqNum+MSS;
+						if(verifyCheckSum(data)==1){
+							output.write(data.getData());
+							nextSeqNum=nextSeqNum+MSS;
+						}
 					}
 					AckHeader ackData = new AckHeader();
 					ackData.setSequenceNumber(nextSeqNum);
@@ -107,13 +112,26 @@ public class SimpleFTPServer {
 					DatagramPacket ackPacket = new DatagramPacket(ack, ack.length,packet.getAddress(),packet.getPort());
 					socket.send(ackPacket);
 					System.out.println("Rcvd : " + rcvdSeqNum+" Ack for : " +nextSeqNum);
-										
+
 				}
 
 			}
 		} catch (Exception e) {
-
 			e.printStackTrace();
+		} finally {
+			try{
+				output.close();
+			} catch (IOException e){
+				e.printStackTrace();
+			}
 		}
+	}
+	private static int verifyCheckSum(DataPacket data) {
+		int rcvdCheckSum = ByteBuffer.wrap(data.getChecksum()).getInt();
+		int calcCheckSum = ByteBuffer.wrap(Utils.calcChecksum(data)).getInt();
+		if(rcvdCheckSum == calcCheckSum){
+			return 1;
+		}
+		return 0;
 	}
 }

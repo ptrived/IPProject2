@@ -6,7 +6,6 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -23,7 +22,7 @@ class GoBackNTimerTask extends TimerTask{
 			byte[] dataArr = Utils.serializePacket(packet);
 			InetAddress ipAddr;
 			try {
-				ipAddr = InetAddress.getLocalHost();
+				ipAddr = InetAddress.getByName(SimpleFTPClient.serverHostname);
 				DatagramPacket dataPacket = new DatagramPacket(dataArr, dataArr.length,ipAddr,7735);
 				SimpleFTPClient.client.send(dataPacket);				
 			} catch (UnknownHostException e) {
@@ -48,7 +47,7 @@ class GoBackNTimerTask extends TimerTask{
  * 
  */
 public class SimpleFTPClient implements Runnable{
-	static final int portNum = 7735;
+	static int portNum;
 	static String serverHostname;
 	static DatagramSocket client;
 	static SimpleFTPClient simpleClient;
@@ -64,7 +63,7 @@ public class SimpleFTPClient implements Runnable{
 	static int lastPktSent;
 	static int endAckExpected;
 	static int firstPktInWindow;
-	//static int lastByteRcvd;
+	static long startTime;
 	static int sequenceNum;
 	static TimerTask timerTask ;
 	static Timer timer;
@@ -90,13 +89,14 @@ public class SimpleFTPClient implements Runnable{
 
 			DataPacket data = new DataPacket(mssData);
 			data.setSequenceNumber(sequenceNum);
+			data.setChecksum(Utils.calcChecksum(data));
 			sequenceNum = sequenceNum+MSS;
 			window.add(data);
 			byte[] dataArr = Utils.serializePacket(data);
 			InetAddress ipAddr;
 			try {
-				ipAddr = InetAddress.getLocalHost();
-				DatagramPacket dataPacket = new DatagramPacket(dataArr, dataArr.length,ipAddr,7735);
+				ipAddr = InetAddress.getByName(serverHostname);
+				DatagramPacket dataPacket = new DatagramPacket(dataArr, dataArr.length,ipAddr,portNum);
 				client.send(dataPacket);
 				//System.out.println("Client done with sending the last packet to server");
 			} catch (UnknownHostException e) {
@@ -111,13 +111,14 @@ public class SimpleFTPClient implements Runnable{
 			data = new DataPacket(mssData);
 			endAckExpected = sequenceNum+MSS;
 			data.setSequenceNumber(sequenceNum);
+			data.setChecksum(Utils.calcChecksum(data));
 			sequenceNum = sequenceNum+MSS;
 			window.add(data);
 			dataArr = Utils.serializePacket(data);
 
 			try {
-				ipAddr = InetAddress.getLocalHost();
-				DatagramPacket dataPacket = new DatagramPacket(dataArr, dataArr.length,ipAddr,7735);
+				ipAddr = InetAddress.getByName(serverHostname);
+				DatagramPacket dataPacket = new DatagramPacket(dataArr, dataArr.length,ipAddr,portNum);
 				client.send(dataPacket);
 				//System.out.println("Client done with sending the last packet to server");
 			} catch (UnknownHostException e) {
@@ -133,6 +134,7 @@ public class SimpleFTPClient implements Runnable{
 			if(mssCount==MSS){
 				DataPacket data = new DataPacket(mssData);
 				data.setSequenceNumber(sequenceNum);
+				data.setChecksum(Utils.calcChecksum(data));
 				sequenceNum = sequenceNum+MSS;
 				window.add(data);
 				mssCount = 0;
@@ -141,8 +143,8 @@ public class SimpleFTPClient implements Runnable{
 				byte[] dataArr = Utils.serializePacket(data);
 				InetAddress ipAddr;
 				try {
-					ipAddr = InetAddress.getLocalHost();
-					DatagramPacket dataPacket = new DatagramPacket(dataArr, dataArr.length,ipAddr,7735);
+					ipAddr = InetAddress.getByName(serverHostname);
+					DatagramPacket dataPacket = new DatagramPacket(dataArr, dataArr.length,ipAddr,portNum);
 					client.send(dataPacket);
 					mssData = new byte[MSS];
 				} catch (UnknownHostException e) {
@@ -163,18 +165,16 @@ public class SimpleFTPClient implements Runnable{
 
 
 	private static void rdt_send(){
+		FileInputStream input = null;
 		try {
-			FileInputStream input = new FileInputStream(filename);
+			input = new FileInputStream(filename);
 			byte[] buff = new byte[1];
 			int res = 0;
-
 			while(res!=-1){
 				res = input.read(buff);
-				//lastByteRcvd++;
 				while(goBackN(buff, false)==0){
 
 				}
-				//goBackN(buff, false);
 			}
 			System.out.println("File Read");
 			goBackN(null, true);
@@ -185,7 +185,13 @@ public class SimpleFTPClient implements Runnable{
 		} catch (IOException e) {
 
 			e.printStackTrace();
-		} 
+		} finally {
+			try {
+				input.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
 	}
 
 	/**
@@ -206,9 +212,9 @@ public class SimpleFTPClient implements Runnable{
 			//			windowSize = Integer.parseInt(args[4]);
 			//			MSS = Integer.parseInt(args[5]);
 			serverHostname = "localhost";
-			int portInput = 7735;
+			portNum = 7735;
 			filename = "F:\\123.txt";
-			windowSize = 4;
+			windowSize = 16;
 			MSS = 2048;
 			sequenceNum =0;
 			client = new DatagramSocket();
@@ -216,10 +222,8 @@ public class SimpleFTPClient implements Runnable{
 			simpleClient = new SimpleFTPClient();
 			//simpleClient.sequenceNum = 0;
 			init();
-			long startTime = System.currentTimeMillis();
-			rdt_send();
-			long endTime = System.currentTimeMillis();
-			System.out.println("Time to transfer : "+(endTime - startTime));
+			startTime = System.currentTimeMillis();
+			rdt_send();			
 		}catch(Exception e){
 			e.printStackTrace();
 		}
@@ -246,7 +250,7 @@ public class SimpleFTPClient implements Runnable{
 			while(true){
 				//System.out.println("Thread running to receive ACK in client");
 				byte[] buffer = new byte[1000];
-				InetAddress ipAddr = InetAddress.getLocalHost();
+				//InetAddress ipAddr = InetAddress.getByName(serverHostname);
 				DatagramPacket ackPacket = new DatagramPacket(buffer, buffer.length);
 				client.receive(ackPacket);
 				AckHeader ackData = (AckHeader) Utils.deserializePacket(ackPacket.getData());
@@ -254,6 +258,9 @@ public class SimpleFTPClient implements Runnable{
 				int ackRcvd = ackData.getSequenceNumber();
 				if(ackRcvd == endAckExpected ){
 					//System.out.println("File transfer complete");
+					long endTime = System.currentTimeMillis();
+					float time = (endTime - SimpleFTPClient.startTime);
+					System.out.println("File transfer completed \nTime to transfer : "+(time/1000)+" Sec");					
 					System.exit(1);
 				}
 				if(ackRcvd > lastAckRcvd){
