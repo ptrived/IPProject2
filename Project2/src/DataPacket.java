@@ -9,7 +9,6 @@ public class DataPacket implements Serializable{
 	byte[] type = new BigInteger("0101010101010101",2).toByteArray();
 	byte[] data;
 	public DataPacket(byte[] data) {
-		//this.sequenceNumber = seqNum;
 		this.data = data;
 	}
 	

@@ -15,11 +15,9 @@ public class Utils {
 			md.update(packet.getData());
 			md.update(packet.gettype());
 			md.update(ByteBuffer.allocate(4).putInt(packet.getSequenceNumber()).array());
-			//md.update(packet.getChecksum());
 			
 		} catch (NoSuchAlgorithmException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			System.out.println("Exception while calculating checksum :"+e.getMessage());
 		}
 		return md.digest();
 	}

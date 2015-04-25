@@ -57,7 +57,7 @@ public class SimpleFTPServer {
 			filename = "F:\\124.txt";
 			output = new FileOutputStream(filename);
 
-			probabilityFactor = 0.15;
+			probabilityFactor = 0.5;
 
 			nextSeqNum = 0;
 			if(probabilityFactor < 0 || probabilityFactor > 1){
@@ -66,29 +66,20 @@ public class SimpleFTPServer {
 			}
 			socket = new DatagramSocket(portNum);
 			System.out.println("Server is up");
-			//MSS = 2048;
-			//System.out.println(Utils.calcChecksum(null));
 			while(true){
 				int bufferSize = 4096;
-				//TODO ::  will have to modify it later based on client's MSS value
 				byte[] buffer = new byte[bufferSize];
-				//InetAddress ipAddr = InetAddress.getLocalHost();
 				DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
 				socket.receive(packet);
-				//System.out.println(packet.getLength());
 				if(MSS==0){
 					MSS = packet.getLength()-153;
 				}
-				//System.out.println(MSS);
 				DataPacket data = (DataPacket) Utils.deserializePacket(packet.getData());
 				double r = probabilisticLossService();
-				//System.out.println("loss factor = "+ r);
 				if(r<=probabilityFactor){
 					System.out.println("Packet loss, Sequence Number = "+ data.getSequenceNumber());
-				}else{									
-					//TODO :: calculate checksum and compare
+				}else{	
 					int rcvdSeqNum = data.getSequenceNumber();
-					//System.out.println("Received Seq Num : "+rcvdSeqNum);
 					if(rcvdSeqNum == nextSeqNum){									
 						if(data.getData().length==0){
 							nextSeqNum=nextSeqNum+MSS;
@@ -97,7 +88,7 @@ public class SimpleFTPServer {
 							byte[] ack = Utils.serializeAck(ackData);
 							DatagramPacket ackPacket = new DatagramPacket(ack, ack.length,packet.getAddress(),packet.getPort());
 							socket.send(ackPacket);
-							System.out.println("Server sent ack for " +nextSeqNum);
+							System.out.println("Rcvd : " + rcvdSeqNum+" Ack for : " +nextSeqNum);
 							System.out.println("File copied to disk");	
 							System.exit(1);
 						}
