@@ -2,41 +2,26 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.nio.ByteBuffer;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
 
 public class Utils {
-	public static long calcChecksum(byte[] buff){
-	    byte[] buf = { (byte) 0xed, 0x2A, 0x44, 0x10, 0x03, 0x30};
-	    int length = buf.length;
-	    int i = 0;
-
-	    long sum = 0;
-	    long data = 0;
-	    while (length > 1) {
-	        data = 0;
-	        data = (((buf[i]) << 8) | ((buf[i + 1]) & 0xFF));
-
-	        sum += data;
-	        if ((sum & 0xFFFF0000) > 0) {
-	            sum = sum & 0xFFFF;
-	            sum += 1;
-	        }
-
-	        i += 2;
-	        length -= 2;
-	    }
-
-	    if (length > 0) {
-	        sum += (buf[i] << 8);
-	        // sum += buffer[i];
-	        if ((sum & 0xFFFF0000) > 0) {
-	            sum = sum & 0xFFFF;
-	            sum += 1;
-	        }
-	    }
-	    sum = ~sum;
-	    sum = sum & 0xFFFF;
-	    return sum;
+	public static byte[] calcChecksum(DataPacket packet){
+		MessageDigest md = null;
+		try {
+			md = MessageDigest.getInstance("MD5");
+			md.update(packet.getData());
+			md.update(packet.gettype());
+			md.update(ByteBuffer.allocate(4).putInt(packet.getSequenceNumber()).array());
+			//md.update(packet.getChecksum());
+			
+		} catch (NoSuchAlgorithmException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return md.digest();
 	}
 
 	public static Object deserializePacket(byte[] packetData)
@@ -54,44 +39,44 @@ public class Utils {
 		}
 		return null;
 	}
-	
+
 	public static byte[] serializePacket(DataPacket packet)
 	{
-	    try
-	    {
-	      ByteArrayOutputStream os = new ByteArrayOutputStream(2048);
-	      ObjectOutputStream outs = new ObjectOutputStream(os);
-	      outs.writeObject(packet);
-	      outs.close();
-	      byte[] byte_arr= os.toByteArray();
-	      os.close();
-	      return byte_arr;
-	    }
-	    catch(Exception e) {
-	        e.printStackTrace();
-	    }
+		try
+		{
+			ByteArrayOutputStream os = new ByteArrayOutputStream(2048);
+			ObjectOutputStream outs = new ObjectOutputStream(os);
+			outs.writeObject(packet);
+			outs.close();
+			byte[] byte_arr= os.toByteArray();
+			os.close();
+			return byte_arr;
+		}
+		catch(Exception e) {
+			e.printStackTrace();
+		}
 
-	    return null;
+		return null;
 
 	}
-	
+
 	public static byte[] serializeAck(AckHeader ack)
 	{
-	    try
-	    {
-	      ByteArrayOutputStream os = new ByteArrayOutputStream(2048);
-	      ObjectOutputStream outs = new ObjectOutputStream(os);
-	      outs.writeObject(ack);
-	      outs.close();
-	      byte[] byte_arr= os.toByteArray();
-	      os.close();
-	      return byte_arr;
-	    }
-	    catch(Exception e) {
-	        e.printStackTrace();
-	    }
+		try
+		{
+			ByteArrayOutputStream os = new ByteArrayOutputStream(2048);
+			ObjectOutputStream outs = new ObjectOutputStream(os);
+			outs.writeObject(ack);
+			outs.close();
+			byte[] byte_arr= os.toByteArray();
+			os.close();
+			return byte_arr;
+		}
+		catch(Exception e) {
+			e.printStackTrace();
+		}
 
-	    return null;
+		return null;
 
 	}
 }
