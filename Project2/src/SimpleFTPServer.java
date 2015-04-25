@@ -31,6 +31,7 @@ public class SimpleFTPServer {
 	static double probabilityFactor;
 
 	static int nextSeqNum;
+	static int MSS;
 
 	private static double probabilisticLossService(){
 		double num = 0;
@@ -53,9 +54,9 @@ public class SimpleFTPServer {
 			//			}
 			filename = "F:\\124.txt";
 			FileOutputStream output = new FileOutputStream(filename);
-			
+
 			probabilityFactor = 0.15;
-			
+
 			nextSeqNum = 0;
 			if(probabilityFactor < 0 || probabilityFactor > 1){
 				System.out.println("Probability Factor is not within the valid range[0-1]");
@@ -63,17 +64,20 @@ public class SimpleFTPServer {
 			}
 			socket = new DatagramSocket(portNum);
 			System.out.println("Server is up");
+			MSS = 2048;
 			System.out.println(Utils.calcChecksum(null));
 			while(true){
-				int bufferSize = 1024;			//TODO ::  will have to modify it later based on client's MSS value
+				int bufferSize = 4096;
+				//TODO ::  will have to modify it later based on client's MSS value
 				byte[] buffer = new byte[bufferSize];
 				InetAddress ipAddr = InetAddress.getLocalHost();
 				DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
 				socket.receive(packet);
-
+				//MSS = packet.getData().length;				
+				//System.out.println(MSS);
 				DataPacket data = (DataPacket) Utils.deserializePacket(packet.getData());
 				double r = probabilisticLossService();
-				System.out.println("loss factor = "+ r);
+				//System.out.println("loss factor = "+ r);
 				if(r<=probabilityFactor){
 					System.out.println("Packet loss, Sequence Number = "+ data.getSequenceNumber());
 				}else{
@@ -81,25 +85,29 @@ public class SimpleFTPServer {
 					//TODO :: calculate checksum and compare
 
 					int rcvdSeqNum = data.getSequenceNumber();
-					System.out.println("Received Seq Num : "+rcvdSeqNum);
+					//System.out.println("Received Seq Num : "+rcvdSeqNum);
 					if(rcvdSeqNum == nextSeqNum){
-						output.write(data.getData());
-						AckHeader ackData = new AckHeader();
-						ackData.setSequenceNumber(++nextSeqNum);
-						byte[] ack = Utils.serializeAck(ackData);
-
-						DatagramPacket ackPacket = new DatagramPacket(ack, ack.length,packet.getAddress(),packet.getPort());
-						socket.send(ackPacket);
-						System.out.println("Server sent ack for " +nextSeqNum);
 						if(data.getData().length==0){
-							System.out.println("File copied to disk");
+							nextSeqNum=nextSeqNum+MSS;
+							AckHeader ackData = new AckHeader();
+							ackData.setSequenceNumber(nextSeqNum);
+							byte[] ack = Utils.serializeAck(ackData);
+							DatagramPacket ackPacket = new DatagramPacket(ack, ack.length,packet.getAddress(),packet.getPort());
+							socket.send(ackPacket);
+							System.out.println("Server sent ack for " +nextSeqNum);
+							System.out.println("File copied to disk");	
 							System.exit(1);
 						}
+						output.write(data.getData());
+						nextSeqNum=nextSeqNum+MSS;
 					}
-					else{
-						System.out.println("Next Sequence Number = " + nextSeqNum);
-					}
-
+					AckHeader ackData = new AckHeader();
+					ackData.setSequenceNumber(nextSeqNum);
+					byte[] ack = Utils.serializeAck(ackData);
+					DatagramPacket ackPacket = new DatagramPacket(ack, ack.length,packet.getAddress(),packet.getPort());
+					socket.send(ackPacket);
+					System.out.println("Rcvd : " + rcvdSeqNum+" Ack for : " +nextSeqNum);
+										
 				}
 
 			}
