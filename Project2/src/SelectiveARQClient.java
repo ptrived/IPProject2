@@ -10,6 +10,11 @@ import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 
+/**
+ * 
+ * @author Ritwikaroyc
+ *
+ */
 class SelectiveARQTimerTask extends TimerTask{
 	int sequenceNum;
 	public SelectiveARQTimerTask(int seqNum){
@@ -21,8 +26,8 @@ class SelectiveARQTimerTask extends TimerTask{
 		list.addAll(SelectiveARQClient.window);
 		System.out.println("Timeout, sequence number = "+list.get(0).getSequenceNumber());
 		synchronized(SelectiveARQClient.window){
-			
-				DataPacket packet = SelectiveARQClient.window.get(this.sequenceNum-SelectiveARQClient.lastAckRcvd);
+				int index = (this.sequenceNum-SelectiveARQClient.lastAckRcvd)/SelectiveARQClient.MSS - 1;
+				DataPacket packet = SelectiveARQClient.window.get(index);
 				byte[] dataArr = Utils.serializePacket(packet);
 				InetAddress ipAddr;
 				try {
@@ -50,7 +55,7 @@ public class SelectiveARQClient implements Runnable{
 	static int MSS;
 
 	static List<DataPacket> window ;
-	static List<Timer> timerList;
+	static List<SelectiveARQTimerTask> timerList;
 	static byte[] mssData;
 	static int mssCount;
 	static int lastAckRcvd;
@@ -59,8 +64,7 @@ public class SelectiveARQClient implements Runnable{
 	static int firstPktInWindow;
 	static long startTime;
 	static int sequenceNum;
-//	static TimerTask timerTask ;
-//	static Timer timer;
+
 	
 	public static void main(String[] args){
 		try{
@@ -100,7 +104,7 @@ public class SelectiveARQClient implements Runnable{
 				res = input.read(buff);
 				selectiveARQ(buff, false);
 			}
-			System.out.println("File Read");
+			//System.out.println("File Read");
 			selectiveARQ(null, true);
 
 		} catch (FileNotFoundException e) {
@@ -129,18 +133,21 @@ public class SelectiveARQClient implements Runnable{
 			data.setChecksum(Utils.calcChecksum(data));
 			sequenceNum = sequenceNum+MSS;
 			window.add(data);
-			byte[] dataArr = Utils.serializePacket(data);
-			InetAddress ipAddr;
-			try {
-				ipAddr = InetAddress.getByName(serverHostname);
-				DatagramPacket dataPacket = new DatagramPacket(dataArr, dataArr.length,ipAddr,portNum);
-				client.send(dataPacket);
-			} catch (UnknownHostException e) {
-				e.printStackTrace();
-			} catch (IOException e) {
-				e.printStackTrace();
+			
+			if(window.size()<= windowSize){
+				byte[] dataArr = Utils.serializePacket(data);
+				InetAddress ipAddr;
+				try {
+					ipAddr = InetAddress.getByName(serverHostname);
+					DatagramPacket dataPacket = new DatagramPacket(dataArr, dataArr.length,ipAddr,portNum);
+					client.send(dataPacket);
+					//TODO :: start the timer
+				} catch (UnknownHostException e) {
+					e.printStackTrace();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
 			}
-
 			//send -1 
 			mssData = new byte[0];
 			data = new DataPacket(mssData);
@@ -149,19 +156,22 @@ public class SelectiveARQClient implements Runnable{
 			data.setChecksum(Utils.calcChecksum(data));
 			sequenceNum = sequenceNum+MSS;
 			window.add(data);
-			dataArr = Utils.serializePacket(data);
+			
+			if(window.size()<= windowSize){
+				byte[] dataArr = Utils.serializePacket(data);
 
-			try {
-				ipAddr = InetAddress.getByName(serverHostname);
-				DatagramPacket dataPacket = new DatagramPacket(dataArr, dataArr.length,ipAddr,portNum);
-				client.send(dataPacket);
-			} catch (UnknownHostException e) {
-				e.printStackTrace();
-			} catch (IOException e) {
-				e.printStackTrace();
+				try {
+					InetAddress ipAddr = InetAddress.getByName(serverHostname);
+					DatagramPacket dataPacket = new DatagramPacket(dataArr, dataArr.length,ipAddr,portNum);
+					client.send(dataPacket);
+					//TODO :: start the timer
+				} catch (UnknownHostException e) {
+					e.printStackTrace();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+
 			}
-
-
 		}
 		else{
 			mssData[mssCount++] = buff[0];
@@ -181,6 +191,7 @@ public class SelectiveARQClient implements Runnable{
 						ipAddr = InetAddress.getByName(serverHostname);
 						DatagramPacket dataPacket = new DatagramPacket(dataArr, dataArr.length,ipAddr,portNum);
 						client.send(dataPacket);
+						//TODO :: start the timer
 						mssData = new byte[MSS];
 					} catch (UnknownHostException e) {
 						e.printStackTrace();
@@ -202,7 +213,7 @@ public class SelectiveARQClient implements Runnable{
 	private static void init() {
 		mssData = new byte[MSS];
 		window = new ArrayList<DataPacket>();
-		timerList = new ArrayList<Timer>();
+		timerList = new ArrayList<SelectiveARQTimerTask>();
 		mssCount = 0;
 		lastAckRcvd = -1;
 		lastPktSent = -1;
@@ -213,10 +224,17 @@ public class SelectiveARQClient implements Runnable{
 		t.start();
 		
 	}
-
+	
+	/**
+	 * Receive ACK packets from server
+	 * check their sequence number
+	 * slide the window
+	 * cancel the timer
+	 * 
+	 */
 	@Override
 	public void run() {
 		
-		
+		//TODO :: Receive AckPackets from server
 	}
 }
