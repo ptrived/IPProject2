@@ -9,7 +9,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
-
+/**
+ * 
+ * @author Prashant
+ *
+ */
 class GoBackNTimerTask extends TimerTask{
 
 	@Override
@@ -18,13 +22,17 @@ class GoBackNTimerTask extends TimerTask{
 		list.addAll(SimpleFTPClient.window);
 		System.out.println("Timeout, sequence number = "+list.get(0).getSequenceNumber());
 		synchronized(SimpleFTPClient.window){
-			for(int i=0; i<SimpleFTPClient.window.size(); i++){
+			for(int i=0; i<SimpleFTPClient.windowSize; i++){
+				if(i>=SimpleFTPClient.window.size()){
+					break;
+				}
 				DataPacket packet = SimpleFTPClient.window.get(i);
+				packet.setChecksum(Utils.calcChecksum(packet));
 				byte[] dataArr = Utils.serializePacket(packet);
 				InetAddress ipAddr;
 				try {
 					ipAddr = InetAddress.getByName(SimpleFTPClient.serverHostname);
-					DatagramPacket dataPacket = new DatagramPacket(dataArr, dataArr.length,ipAddr,7735);
+					DatagramPacket dataPacket = new DatagramPacket(dataArr, dataArr.length,ipAddr,SimpleFTPClient.portNum);
 					SimpleFTPClient.client.send(dataPacket);				
 				} catch (UnknownHostException e) {
 					e.printStackTrace();
@@ -49,7 +57,7 @@ class GoBackNTimerTask extends TimerTask{
  * 
  */
 public class SimpleFTPClient implements Runnable{
-	static int portNum;
+	static int portNum=7735;
 	static String serverHostname;
 	static DatagramSocket client;
 	static SimpleFTPClient simpleClient;
@@ -69,7 +77,7 @@ public class SimpleFTPClient implements Runnable{
 	static int sequenceNum;
 	static TimerTask timerTask ;
 	static Timer timer;
-	/**
+	/*
 	 *  
 	 *  Reads data byte by byte from the file
 	 *  Buffers the data locally 
@@ -89,18 +97,19 @@ public class SimpleFTPClient implements Runnable{
 			data.setChecksum(Utils.calcChecksum(data));
 			sequenceNum = sequenceNum+MSS;
 			window.add(data);
-			byte[] dataArr = Utils.serializePacket(data);
-			InetAddress ipAddr;
-			try {
-				ipAddr = InetAddress.getByName(serverHostname);
-				DatagramPacket dataPacket = new DatagramPacket(dataArr, dataArr.length,ipAddr,portNum);
-				client.send(dataPacket);
-			} catch (UnknownHostException e) {
-				e.printStackTrace();
-			} catch (IOException e) {
-				e.printStackTrace();
+			if(window.size() < windowSize){
+				byte[] dataArr = Utils.serializePacket(data);
+				InetAddress ipAddr;
+				try {
+					ipAddr = InetAddress.getByName(serverHostname);
+					DatagramPacket dataPacket = new DatagramPacket(dataArr, dataArr.length,ipAddr,portNum);
+					client.send(dataPacket);
+				} catch (UnknownHostException e) {
+					e.printStackTrace();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
 			}
-
 			//send -1 
 			mssData = new byte[0];
 			data = new DataPacket(mssData);
@@ -109,16 +118,18 @@ public class SimpleFTPClient implements Runnable{
 			data.setChecksum(Utils.calcChecksum(data));
 			sequenceNum = sequenceNum+MSS;
 			window.add(data);
-			dataArr = Utils.serializePacket(data);
-
-			try {
-				ipAddr = InetAddress.getByName(serverHostname);
-				DatagramPacket dataPacket = new DatagramPacket(dataArr, dataArr.length,ipAddr,portNum);
-				client.send(dataPacket);
-			} catch (UnknownHostException e) {
-				e.printStackTrace();
-			} catch (IOException e) {
-				e.printStackTrace();
+			if(window.size() < windowSize){
+				byte[] dataArr = Utils.serializePacket(data);
+				InetAddress ipAddr;
+				try {
+					ipAddr = InetAddress.getByName(serverHostname);
+					DatagramPacket dataPacket = new DatagramPacket(dataArr, dataArr.length,ipAddr,portNum);
+					client.send(dataPacket);
+				} catch (UnknownHostException e) {
+					e.printStackTrace();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
 			}
 
 
@@ -133,7 +144,7 @@ public class SimpleFTPClient implements Runnable{
 				window.add(data);
 				mssCount = 0;
 				lastPktSent++;		
-				
+
 				if(window.size()<= windowSize){
 					byte[] dataArr = Utils.serializePacket(data);
 					InetAddress ipAddr;
@@ -169,7 +180,7 @@ public class SimpleFTPClient implements Runnable{
 				res = input.read(buff);
 				goBackN(buff, false);
 			}
-			System.out.println("File Read");
+			//System.out.println("File Read");
 			goBackN(null, true);
 
 		} catch (FileNotFoundException e) {
@@ -189,26 +200,24 @@ public class SimpleFTPClient implements Runnable{
 
 	/**
 	 * 
-	 * Client should be invoked like this:
-	 * Simple_ftp_server server-host-name server-port# file-name N MSS 
-	 * 
+	 * @param args
 	 */
 	public static void main (String[] args){
 		try{
-			//			serverHostname = args[1];
-			//			int portInput = Integer.parseInt(args[2]);
-			//			if(portInput!=portNum){
-			//				System.out.println("Invalid Server Port Number");
-			//				System.exit(1);
-			//			}
-			//			filename = args[3];
-			//			windowSize = Integer.parseInt(args[4]);
-			//			MSS = Integer.parseInt(args[5]);
-			serverHostname = "localhost";
-			portNum = 7735;
-			filename = "F:\\123.txt";
-			windowSize = 16;
-			MSS = 256;
+			serverHostname = args[0];
+			int portInput = Integer.parseInt(args[1]);
+			if(portInput!=portNum){
+				System.out.println("Invalid Server Port Number");
+				System.exit(1);
+			}
+			filename = args[2];
+			windowSize = Integer.parseInt(args[3]);
+			MSS = Integer.parseInt(args[4]);
+			//			serverHostname = "localhost";
+			//			portNum = 7735;
+			//			filename = "123.txt";
+			//			windowSize = 16;
+			//			MSS = 1000;
 			sequenceNum =0;
 			client = new DatagramSocket();
 			System.out.println("Connected to server");
@@ -251,7 +260,6 @@ public class SimpleFTPClient implements Runnable{
 					System.exit(1);
 				}
 				if(ackRcvd > lastAckRcvd){
-
 					lastAckRcvd = ackRcvd;
 					timer.cancel();
 					//slide the window
@@ -260,8 +268,7 @@ public class SimpleFTPClient implements Runnable{
 							window.remove(0);
 							firstPktInWindow+=MSS;
 						}
-					}
-					
+					}					
 					timerTask = new GoBackNTimerTask();
 					timer = new Timer(true);
 					timer.scheduleAtFixedRate(timerTask, 1000, 1000);
