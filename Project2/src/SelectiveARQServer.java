@@ -75,7 +75,7 @@ public class SelectiveARQServer {
 						byte[] ack = Utils.serializeAck(ackData);
 						DatagramPacket ackPacket = new DatagramPacket(ack, ack.length,packet.getAddress(),packet.getPort());
 						socket.send(ackPacket);
-						System.out.println("Rcvd : " + rcvdSeqNum+" Ack for : " +(rcvdSeqNum+MSS));
+						//System.out.println("Rcvd : " + rcvdSeqNum+" Ack for : " +(rcvdSeqNum+MSS));
 						if(rcvdSeqNum == nextSeqNum){
 							while(window.containsKey(nextSeqNum)){
 								data = window.get(nextSeqNum);

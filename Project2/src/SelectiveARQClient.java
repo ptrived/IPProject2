@@ -106,7 +106,7 @@ public class SelectiveARQClient implements Runnable{
 			serverHostname = "localhost";
 			portNum = 7735;
 			filename = "F:\\123.txt";
-			windowSize = 1024;
+			windowSize = 256;
 			MSS = 1000;
 			sequenceNum =0;
 			client = new DatagramSocket();
