@@ -168,7 +168,7 @@ public class SimpleFTPClient implements Runnable{
 				if(lastPktSent==0){
 					timerTask = new GoBackNTimerTask();
 					timer = new Timer(true);
-					timer.scheduleAtFixedRate(timerTask,200, 200);
+					timer.scheduleAtFixedRate(timerTask,100, 100);
 				}
 			}
 		}
@@ -281,7 +281,7 @@ public class SimpleFTPClient implements Runnable{
 					//}					
 					timerTask = new GoBackNTimerTask();
 					timer = new Timer(true);
-					timer.scheduleAtFixedRate(timerTask, 200, 200);
+					timer.scheduleAtFixedRate(timerTask, 100, 100);
 				}
 			}
 		} catch (IOException e) {

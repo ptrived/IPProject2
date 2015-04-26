@@ -93,7 +93,7 @@ public class SimpleFTPServer {
 							byte[] ack = Utils.serializeAck(ackData);
 							DatagramPacket ackPacket = new DatagramPacket(ack, ack.length,packet.getAddress(),packet.getPort());
 							socket.send(ackPacket);
-							System.out.println("Rcvd : " + rcvdSeqNum+" Ack for : " +nextSeqNum);
+							//System.out.println("Rcvd : " + rcvdSeqNum+" Ack for : " +nextSeqNum);
 							System.out.println("File copied to disk");	
 							System.exit(1);
 						}
@@ -108,7 +108,7 @@ public class SimpleFTPServer {
 					byte[] ack = Utils.serializeAck(ackData);
 					DatagramPacket ackPacket = new DatagramPacket(ack, ack.length,packet.getAddress(),packet.getPort());
 					socket.send(ackPacket);
-					System.out.println("Rcvd : " + rcvdSeqNum+" Ack for : " +nextSeqNum);
+					//System.out.println("Rcvd : " + rcvdSeqNum+" Ack for : " +nextSeqNum);
 
 				}
 
