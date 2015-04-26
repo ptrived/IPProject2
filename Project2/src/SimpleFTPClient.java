@@ -96,6 +96,7 @@ public class SimpleFTPClient implements Runnable{
 
 			DataPacket data = new DataPacket(mssData);
 			data.setSequenceNumber(sequenceNum);
+			//System.out.println("adding " + sequenceNum+" to window");
 			data.setChecksum(Utils.calcChecksum(data));
 			sequenceNum = sequenceNum+MSS;
 			window.add(data);
@@ -117,6 +118,7 @@ public class SimpleFTPClient implements Runnable{
 			data = new DataPacket(mssData);
 			endAckExpected = sequenceNum+MSS;
 			data.setSequenceNumber(sequenceNum);
+			//System.out.println("adding " + sequenceNum+" to window");
 			data.setChecksum(Utils.calcChecksum(data));
 			sequenceNum = sequenceNum+MSS;
 			window.add(data);
@@ -142,11 +144,13 @@ public class SimpleFTPClient implements Runnable{
 				DataPacket data = new DataPacket(mssData);
 				data.setSequenceNumber(sequenceNum);
 				data.setChecksum(Utils.calcChecksum(data));
+				//System.out.println("adding " + sequenceNum+" to window");
 				sequenceNum = sequenceNum+MSS;
 				window.add(data);
 				mssCount = 0;
 				lastPktSent++;		
-
+				mssData = new byte[MSS];
+				
 				if(window.size()<= windowSize){
 					byte[] dataArr = Utils.serializePacket(data);
 					InetAddress ipAddr;
@@ -154,7 +158,7 @@ public class SimpleFTPClient implements Runnable{
 						ipAddr = InetAddress.getByName(serverHostname);
 						DatagramPacket dataPacket = new DatagramPacket(dataArr, dataArr.length,ipAddr,portNum);
 						client.send(dataPacket);
-						mssData = new byte[MSS];
+						
 					} catch (UnknownHostException e) {
 						e.printStackTrace();
 					} catch (IOException e) {
@@ -267,8 +271,11 @@ public class SimpleFTPClient implements Runnable{
 					//slide the window
 					//synchronized (window) {
 						while(firstPktInWindow < lastAckRcvd && window.size()>0){
-							System.out.println("removing " + firstPktInWindow + " from window = " + window.get(0).getSequenceNumber());
+							//System.out.println("removing " + firstPktInWindow + " from window = " + window.get(0).getSequenceNumber());
 							window.remove(0);
+							if(window.size()>0){
+								//System.out.println("first pkt in window: " + window.get(0).getSequenceNumber());
+							}
 							firstPktInWindow+=MSS;
 						}
 					//}					
