@@ -18,14 +18,16 @@ class GoBackNTimerTask extends TimerTask{
 
 	@Override
 	public void run() {	
-		List<DataPacket> list = new ArrayList<DataPacket>();
+		/*List<DataPacket> list = new ArrayList<DataPacket>();
 		list.addAll(SimpleFTPClient.window);
-		System.out.println("Timeout, sequence number = "+list.get(0).getSequenceNumber());
-		synchronized(SimpleFTPClient.window){
+		System.out.println("Timeout, sequence number = "+list.get(0).getSequenceNumber());*/
+		System.out.println("Timeout, sequence number = "+SimpleFTPClient.window.get(0).getSequenceNumber());
+		//synchronized(SimpleFTPClient.window){
 			for(int i=0; i<SimpleFTPClient.windowSize; i++){
-				if(i>=SimpleFTPClient.window.size()){
+				if(i >= SimpleFTPClient.window.size()){
 					break;
 				}
+				//DataPacket packet = list.get(i);
 				DataPacket packet = SimpleFTPClient.window.get(i);
 				packet.setChecksum(Utils.calcChecksum(packet));
 				byte[] dataArr = Utils.serializePacket(packet);
@@ -40,7 +42,7 @@ class GoBackNTimerTask extends TimerTask{
 					e.printStackTrace();
 				}
 			}
-		}
+		//}
 	}
 
 }
@@ -94,6 +96,7 @@ public class SimpleFTPClient implements Runnable{
 
 			DataPacket data = new DataPacket(mssData);
 			data.setSequenceNumber(sequenceNum);
+			//System.out.println("adding " + sequenceNum+" to window");
 			data.setChecksum(Utils.calcChecksum(data));
 			sequenceNum = sequenceNum+MSS;
 			window.add(data);
@@ -115,6 +118,7 @@ public class SimpleFTPClient implements Runnable{
 			data = new DataPacket(mssData);
 			endAckExpected = sequenceNum+MSS;
 			data.setSequenceNumber(sequenceNum);
+			//System.out.println("adding " + sequenceNum+" to window");
 			data.setChecksum(Utils.calcChecksum(data));
 			sequenceNum = sequenceNum+MSS;
 			window.add(data);
@@ -140,11 +144,13 @@ public class SimpleFTPClient implements Runnable{
 				DataPacket data = new DataPacket(mssData);
 				data.setSequenceNumber(sequenceNum);
 				data.setChecksum(Utils.calcChecksum(data));
+				//System.out.println("adding " + sequenceNum+" to window");
 				sequenceNum = sequenceNum+MSS;
 				window.add(data);
 				mssCount = 0;
 				lastPktSent++;		
-
+				mssData = new byte[MSS];
+				
 				if(window.size()<= windowSize){
 					byte[] dataArr = Utils.serializePacket(data);
 					InetAddress ipAddr;
@@ -152,7 +158,7 @@ public class SimpleFTPClient implements Runnable{
 						ipAddr = InetAddress.getByName(serverHostname);
 						DatagramPacket dataPacket = new DatagramPacket(dataArr, dataArr.length,ipAddr,portNum);
 						client.send(dataPacket);
-						mssData = new byte[MSS];
+						
 					} catch (UnknownHostException e) {
 						e.printStackTrace();
 					} catch (IOException e) {
@@ -162,7 +168,7 @@ public class SimpleFTPClient implements Runnable{
 				if(lastPktSent==0){
 					timerTask = new GoBackNTimerTask();
 					timer = new Timer(true);
-					timer.scheduleAtFixedRate(timerTask,1000, 1000);
+					timer.scheduleAtFixedRate(timerTask,200, 200);
 				}
 			}
 		}
@@ -263,15 +269,19 @@ public class SimpleFTPClient implements Runnable{
 					lastAckRcvd = ackRcvd;
 					timer.cancel();
 					//slide the window
-					synchronized (window) {
+					//synchronized (window) {
 						while(firstPktInWindow < lastAckRcvd && window.size()>0){
+							//System.out.println("removing " + firstPktInWindow + " from window = " + window.get(0).getSequenceNumber());
 							window.remove(0);
+							if(window.size()>0){
+								//System.out.println("first pkt in window: " + window.get(0).getSequenceNumber());
+							}
 							firstPktInWindow+=MSS;
 						}
-					}					
+					//}					
 					timerTask = new GoBackNTimerTask();
 					timer = new Timer(true);
-					timer.scheduleAtFixedRate(timerTask, 1000, 1000);
+					timer.scheduleAtFixedRate(timerTask, 200, 200);
 				}
 			}
 		} catch (IOException e) {
