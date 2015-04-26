@@ -9,7 +9,9 @@ CLASSES = \
 	DataPacket.java \
 	Utils.java \
 	SimpleFTPClient.java \
-	SimpleFTPServer.java
+	SimpleFTPServer.java \
+	SelectiveARQClient.java \
+	SelectiveARQServer.java
 
 default: classes
 
