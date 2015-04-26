@@ -18,14 +18,16 @@ class GoBackNTimerTask extends TimerTask{
 
 	@Override
 	public void run() {	
-		List<DataPacket> list = new ArrayList<DataPacket>();
+		/*List<DataPacket> list = new ArrayList<DataPacket>();
 		list.addAll(SimpleFTPClient.window);
-		System.out.println("Timeout, sequence number = "+list.get(0).getSequenceNumber());
-		synchronized(SimpleFTPClient.window){
+		System.out.println("Timeout, sequence number = "+list.get(0).getSequenceNumber());*/
+		System.out.println("Timeout, sequence number = "+SimpleFTPClient.window.get(0).getSequenceNumber());
+		//synchronized(SimpleFTPClient.window){
 			for(int i=0; i<SimpleFTPClient.windowSize; i++){
-				if(i>=SimpleFTPClient.window.size()){
+				if(i >= SimpleFTPClient.window.size()){
 					break;
 				}
+				//DataPacket packet = list.get(i);
 				DataPacket packet = SimpleFTPClient.window.get(i);
 				packet.setChecksum(Utils.calcChecksum(packet));
 				byte[] dataArr = Utils.serializePacket(packet);
@@ -40,7 +42,7 @@ class GoBackNTimerTask extends TimerTask{
 					e.printStackTrace();
 				}
 			}
-		}
+		//}
 	}
 
 }
@@ -162,7 +164,7 @@ public class SimpleFTPClient implements Runnable{
 				if(lastPktSent==0){
 					timerTask = new GoBackNTimerTask();
 					timer = new Timer(true);
-					timer.scheduleAtFixedRate(timerTask,1000, 1000);
+					timer.scheduleAtFixedRate(timerTask,200, 200);
 				}
 			}
 		}
@@ -263,15 +265,16 @@ public class SimpleFTPClient implements Runnable{
 					lastAckRcvd = ackRcvd;
 					timer.cancel();
 					//slide the window
-					synchronized (window) {
+					//synchronized (window) {
 						while(firstPktInWindow < lastAckRcvd && window.size()>0){
+							System.out.println("removing " + firstPktInWindow + " from window = " + window.get(0).getSequenceNumber());
 							window.remove(0);
 							firstPktInWindow+=MSS;
 						}
-					}					
+					//}					
 					timerTask = new GoBackNTimerTask();
 					timer = new Timer(true);
-					timer.scheduleAtFixedRate(timerTask, 1000, 1000);
+					timer.scheduleAtFixedRate(timerTask, 200, 200);
 				}
 			}
 		} catch (IOException e) {
