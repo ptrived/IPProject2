@@ -68,13 +68,14 @@ public class SimpleFTPServer {
 			}
 			socket = new DatagramSocket(portNum);
 			System.out.println("Server is up");
-			while(true){
-				int bufferSize = 4096;
+			int bufferSize = 65536;
+			while(true){				
 				byte[] buffer = new byte[bufferSize];
 				DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
 				socket.receive(packet);
 				if(MSS==0){
 					MSS = packet.getLength()-153;
+					//bufferSize = packet.getLength();
 				}
 				DataPacket data = (DataPacket) Utils.deserializePacket(packet.getData());
 				double r = probabilisticLossService();
