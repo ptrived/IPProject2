@@ -8,21 +8,10 @@ import java.util.Arrays;
 
 /**
  * 
- * @author Ritwikaroyc
+ * Main class for Go Back N Server
  * 
  * command to start the Server :
  * Simple_ftp_server server-port file-name p
- * file-name : name of the file where the data will be written
- * p : packet loss probability
- * 
- * what to print: whenever a packet with sequence number X is discarded by probabilistic loss service, the server
- * should print the following line:
- * Packet loss, Sequence number = x
- * 
- * server has to implement a probabilistic loss service 
- * after receiving a packet, server will generate a random number r
- * if r<=p then this packet is discarded
- * else packet is accepted and processed
  *  
  */
 
@@ -40,15 +29,15 @@ public class SimpleFTPServer {
 		num = 0 + (double)(Math.random()*1);
 		return num;
 	}
-	
-	/*
-	 * Simple_ftp_server server-port file-name p
+
+	/**
+	 * Command to run:
+	 * SimpleFTPServer server-port file-name p
 	 */
 	public static void main(String args[]){
 		FileOutputStream output = null;
 		try {
 			int serverPort = Integer.parseInt(args[0]);	// this should always be 7735
-			//int serverPort = 7735;
 			if(serverPort!=portNum){
 				System.out.println("Entered port number is wrong");
 				System.exit(1);
@@ -59,6 +48,7 @@ public class SimpleFTPServer {
 				System.out.println("Probability Factor is not within the valid range[0-1]");
 				System.exit(1);
 			}
+			//			int serverPort = 7735;
 			//			filename = "124.txt";
 			//			probabilityFactor = 0.25;
 			output = new FileOutputStream(new File(filename),true);
@@ -99,7 +89,6 @@ public class SimpleFTPServer {
 						}
 						if(verifyCheckSum(data)==1){
 							output.write(data.getData());
-							//output.flush();
 							nextSeqNum=nextSeqNum+MSS;
 						}
 					}
@@ -123,12 +112,14 @@ public class SimpleFTPServer {
 			}
 		}
 	}
+	
+	/*
+	 * Verify the checksum of incoming packets
+	 */
 	private static int verifyCheckSum(DataPacket data) {
 		byte[] calcChecksum = new byte[2];
 		calcChecksum = Utils.calcChecksum(data);
-		//System.out.println("RcvdCheckSum = "+rcvdCheckSum+" CalcCheckSum = "+calcCheckSum);
 		if(Arrays.equals(data.getChecksum(),calcChecksum)){
-			//System.out.println("CheckSum Equals");
 			return 1;
 		}
 		return 0;

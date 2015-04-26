@@ -6,7 +6,11 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-
+/**
+ * 
+ * Class for Selective Repeat ARQ
+ *
+ */
 public class SelectiveARQServer {
 	static DatagramSocket socket ;
 	static int portNum = 7735;
@@ -18,19 +22,25 @@ public class SelectiveARQServer {
 	static int windowSize;
 	static Map<Integer, DataPacket> window;
 
+	/**
+	 * Generates a random number for probabilistic loss service
+	 */
 	private static double probabilisticLossService(){
 		double num = 0;
 		num = 0 + (double)(Math.random()*1);
 		return num;
 	}
 
+	/**
+	 * main method for server
+	 * @param args
+	 */
 	public static void main(String[] args) {
 
 		FileOutputStream output = null;
 		try {
-			//int serverPort = Integer.parseInt(args[0]);	// this should always be 7735
-			int serverPort = 7735;
-			/*if(serverPort!=portNum){
+			int serverPort = Integer.parseInt(args[0]);	// this should always be 7735			
+			if(serverPort!=portNum){
 				System.out.println("Entered port number is wrong");
 				System.exit(1);
 			}
@@ -39,17 +49,17 @@ public class SelectiveARQServer {
 			if(probabilityFactor < 0 || probabilityFactor > 1){
 				System.out.println("Probability Factor is not within the valid range[0-1]");
 				System.exit(1);
-			}*/
-			filename = "F:\\124.txt";
-			probabilityFactor = 0.5;
+			}
+			//int serverPort = 7735;
+			//filename = "F:\\124.txt";
+			//probabilityFactor = 0.5;
 			output = new FileOutputStream(filename);
 			nextSeqNum = 0;
-			windowSize = 4;
 			if(probabilityFactor < 0 || probabilityFactor > 1){
 				System.out.println("Probability Factor is not within the valid range[0-1]");
 				System.exit(1);
 			}
-
+			
 			init();
 
 			socket = new DatagramSocket(portNum);
@@ -87,9 +97,7 @@ public class SelectiveARQServer {
 								window.remove(nextSeqNum);
 								nextSeqNum+=MSS;
 							}
-						}
-						
-						
+						}	
 					}
 				}
 
@@ -105,17 +113,24 @@ public class SelectiveARQServer {
 		}
 
 	}
+
+	/**
+	 * Initializing data structures
+	 */
 	private static void init() {
 		window = new HashMap<Integer, DataPacket>();
 
 	}
 
+	/**
+	 * Verify Checksum of incoming data
+	 * @param data
+	 * @return int 
+	 */
 	private static int verifyCheckSum(DataPacket data) {
 		byte[] calcChecksum = new byte[2];
 		calcChecksum = Utils.calcChecksum(data);
-		//System.out.println("RcvdCheckSum = "+rcvdCheckSum+" CalcCheckSum = "+calcCheckSum);
 		if(Arrays.equals(data.getChecksum(),calcChecksum)){
-			//System.out.println("CheckSum Equals");
 			return 1;
 		}
 		return 0;

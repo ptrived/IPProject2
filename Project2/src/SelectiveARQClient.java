@@ -12,7 +12,7 @@ import java.util.TimerTask;
 
 /**
  * 
- * @author Ritwikaroyc
+ * Class for Selective Repeat ARQ window Element
  *
  */
 class SelectiveARQWindow{
@@ -45,6 +45,11 @@ class SelectiveARQWindow{
 
 }
 
+/**
+ * 
+ * TimerTask for resending packets
+ *
+ */
 class SelectiveARQTimerTask extends TimerTask{
 	int seqNum;
 	public SelectiveARQTimerTask(int seqNum){
@@ -56,6 +61,7 @@ class SelectiveARQTimerTask extends TimerTask{
 		System.out.println("Timeout, sequence number = "+ this.seqNum);
 		if(SelectiveARQClient.window.containsKey(this.seqNum)){
 			DataPacket packet = SelectiveARQClient.window.get(this.seqNum).getPacket();
+			packet.setChecksum(Utils.calcChecksum(packet));
 			byte[] dataArr = Utils.serializePacket(packet);
 			InetAddress ipAddr;
 			try {
@@ -69,8 +75,13 @@ class SelectiveARQTimerTask extends TimerTask{
 			}
 		}
 	}
-
 }
+
+/**
+ * 
+ * Selective Repeat ARQ Client
+ *
+ */
 public class SelectiveARQClient implements Runnable{
 	static int portNum;
 	static String serverHostname;
@@ -85,7 +96,6 @@ public class SelectiveARQClient implements Runnable{
 	static byte[] mssData;
 	static int mssCount;
 	static int lastAckRcvd;
-	//static int lastPktSent;
 	static int endAckExpected;
 	static int firstPktInWindow;
 	static int lastPktInWindow;
@@ -94,20 +104,20 @@ public class SelectiveARQClient implements Runnable{
 
 	public static void main(String[] args){
 		try{
-			//			serverHostname = args[1];
-			//			int portInput = Integer.parseInt(args[2]);
-			//			if(portInput!=portNum){
-			//				System.out.println("Invalid Server Port Number");
-			//				System.exit(1);
-			//			}
-			//			filename = args[3];
-			//			windowSize = Integer.parseInt(args[4]);
-			//			MSS = Integer.parseInt(args[5]);
-			serverHostname = "localhost";
-			portNum = 7735;
-			filename = "F:\\123.txt";
-			windowSize = 256;
-			MSS = 1000;
+			serverHostname = args[1];
+			int portInput = Integer.parseInt(args[2]);
+			if(portInput!=portNum){
+				System.out.println("Invalid Server Port Number");
+				System.exit(1);
+			}
+			filename = args[3];
+			windowSize = Integer.parseInt(args[4]);
+			MSS = Integer.parseInt(args[5]);
+			//			serverHostname = "localhost";
+			//			portNum = 7735;
+			//			filename = "F:\\123.txt";
+			//			windowSize = 256;
+			//			MSS = 1000;
 			sequenceNum =0;
 			client = new DatagramSocket();
 			System.out.println("Connected to server");
@@ -120,6 +130,9 @@ public class SelectiveARQClient implements Runnable{
 		}
 	}
 
+	/**
+	 * Main method to send the data
+	 */
 	private static void rdt_send() {
 		FileInputStream input = null;
 		try {
@@ -134,10 +147,8 @@ public class SelectiveARQClient implements Runnable{
 			selectiveARQ(null, true);
 
 		} catch (FileNotFoundException e) {
-
 			e.printStackTrace();
 		} catch (IOException e) {
-
 			e.printStackTrace();
 		} finally {
 			try {
@@ -148,20 +159,19 @@ public class SelectiveARQClient implements Runnable{
 		}
 	}
 
+	/*
+	 * Selective Repeat Sender method
+	 */
 	private static void selectiveARQ(byte[] buff, boolean lastFlag) {
 		if(lastFlag == true){
 			System.out.println("last flag = true");
 			if(mssCount>0){
 				mssCount = 0;
-				//lastPktSent++;
 				DataPacket data = new DataPacket(mssData);
 				data.setSequenceNumber(sequenceNum);
 				data.setChecksum(Utils.calcChecksum(data));
-
 				SelectiveARQWindow windowElement = new SelectiveARQWindow();
 				windowElement.setPacket(data);
-
-
 				sequenceNum = sequenceNum+MSS;
 				window.put(data.getSequenceNumber(), windowElement);
 				System.out.println("last pkt = " + data.getSequenceNumber() + " length = " + data.getData().length);
@@ -182,18 +192,15 @@ public class SelectiveARQClient implements Runnable{
 					}
 				}
 			}
-			//send the last packet
 
-			//send -1 
+			//send the last packet with 0 Data
 			mssData = new byte[0];
 			DataPacket data = new DataPacket(mssData);
 			endAckExpected = sequenceNum+MSS;
 			data.setSequenceNumber(sequenceNum);
 			data.setChecksum(Utils.calcChecksum(data));
-
 			SelectiveARQWindow windowElement = new SelectiveARQWindow();
 			windowElement.setPacket(data);
-
 			sequenceNum = sequenceNum+MSS;
 			window.put(data.getSequenceNumber(), windowElement);
 			System.out.println("last empty pkt = " + data.getSequenceNumber()+ " length = " + data.getData().length);
@@ -213,8 +220,6 @@ public class SelectiveARQClient implements Runnable{
 					e.printStackTrace();
 				}
 			}
-
-
 		}
 		else{
 			mssData[mssCount++] = buff[0];
@@ -226,13 +231,10 @@ public class SelectiveARQClient implements Runnable{
 				SelectiveARQWindow windowElement = new SelectiveARQWindow();
 				windowElement.setPacket(data);
 				windowElement.setTimer(timer);
-
 				sequenceNum = sequenceNum+MSS;
 				window.put(data.getSequenceNumber(), windowElement);
 				mssCount = 0;
-				//lastPktSent++;		
 				mssData = new byte[MSS];
-
 				if(window.size()<= windowSize){
 					byte[] dataArr = Utils.serializePacket(data);
 					InetAddress ipAddr;
@@ -249,26 +251,25 @@ public class SelectiveARQClient implements Runnable{
 						e.printStackTrace();
 					}			
 				}
-
 			}
 		}
 
 
 	}
 
+	/*
+	 * Init for Client
+	 */
 	private static void init() {
 		mssData = new byte[MSS];
 		window = new HashMap<Integer, SelectiveARQWindow>();
 		mssCount = 0;
 		lastAckRcvd = -1;
-		//lastPktSent = -1;
 		firstPktInWindow = 0;
 		endAckExpected = -1;
 		lastPktInWindow = -1;
-
 		Thread t = new Thread(selectiveClient);
 		t.start();
-
 	}
 
 	@Override
@@ -284,12 +285,6 @@ public class SelectiveARQClient implements Runnable{
 				if(ackRcvd > maxAckRcvd){
 					maxAckRcvd = ackRcvd;
 				}
-				//				if(ackRcvd == endAckExpected){
-				//					long endTime = System.currentTimeMillis();
-				//					float time = (endTime - SimpleFTPClient.startTime);
-				//					System.out.println("File transfer completed \nTime to transfer : "+(time/1000)+" Sec");					
-				//					System.exit(1);
-				//				}
 				int ackPkt = ackRcvd-MSS;
 				if(window.containsKey(ackPkt)){
 
@@ -301,7 +296,6 @@ public class SelectiveARQClient implements Runnable{
 					while(windowElement.getPacket().getSequenceNumber()==firstPktInWindow && windowElement.getAckRcvd()){
 						window.remove(firstPktInWindow);
 						firstPktInWindow+=MSS;
-
 						if(window.containsKey(lastPktInWindow+MSS)){
 							SelectiveARQWindow element = window.get(lastPktInWindow+MSS);
 							DataPacket data = element.getPacket();
@@ -333,11 +327,8 @@ public class SelectiveARQClient implements Runnable{
 					System.out.println("File transfer completed \nTime to transfer : "+(time/1000)+" Sec");					
 					System.exit(1);
 				}
-
-
 			}
 		} catch (IOException e) {
-
 			e.printStackTrace();
 		}
 

@@ -9,53 +9,43 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
+
 /**
  * 
- * @author Prashant
+ * Timer Task for Resending Packet
  *
  */
 class GoBackNTimerTask extends TimerTask{
 
 	@Override
 	public void run() {	
-		/*List<DataPacket> list = new ArrayList<DataPacket>();
-		list.addAll(SimpleFTPClient.window);
-		System.out.println("Timeout, sequence number = "+list.get(0).getSequenceNumber());*/
+
 		System.out.println("Timeout, sequence number = "+SimpleFTPClient.window.get(0).getSequenceNumber());
-		//synchronized(SimpleFTPClient.window){
-			for(int i=0; i<SimpleFTPClient.windowSize; i++){
-				if(i >= SimpleFTPClient.window.size()){
-					break;
-				}
-				//DataPacket packet = list.get(i);
-				DataPacket packet = SimpleFTPClient.window.get(i);
-				packet.setChecksum(Utils.calcChecksum(packet));
-				byte[] dataArr = Utils.serializePacket(packet);
-				InetAddress ipAddr;
-				try {
-					ipAddr = InetAddress.getByName(SimpleFTPClient.serverHostname);
-					DatagramPacket dataPacket = new DatagramPacket(dataArr, dataArr.length,ipAddr,SimpleFTPClient.portNum);
-					SimpleFTPClient.client.send(dataPacket);				
-				} catch (UnknownHostException e) {
-					e.printStackTrace();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
+		for(int i=0; i<SimpleFTPClient.windowSize; i++){
+			if(i >= SimpleFTPClient.window.size()){
+				break;
 			}
-		//}
+			DataPacket packet = SimpleFTPClient.window.get(i);
+			packet.setChecksum(Utils.calcChecksum(packet));
+			byte[] dataArr = Utils.serializePacket(packet);
+			InetAddress ipAddr;
+			try {
+				ipAddr = InetAddress.getByName(SimpleFTPClient.serverHostname);
+				DatagramPacket dataPacket = new DatagramPacket(dataArr, dataArr.length,ipAddr,SimpleFTPClient.portNum);
+				SimpleFTPClient.client.send(dataPacket);				
+			} catch (UnknownHostException e) {
+				e.printStackTrace();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
 	}
 
 }
-/*
- * 
- * command to start the client: simple_ftp_server server_host_name server-port file-name N MSS
- * file-name : name of the file to be transferred
- * N : window size
- * MSS : maximum segment size
- * 
- * What to print on CLient: 
- * whenever a timeout occurs for a packet with sequence number Y, the client should print the following:
- * Timeout, sequence number = Y
+
+/**
+ * Class for GoBackN Client:
+ * command to start the client: SimpleFTPClient server_host_name server-port file-name N MSS
  * 
  */
 public class SimpleFTPClient implements Runnable{
@@ -63,11 +53,9 @@ public class SimpleFTPClient implements Runnable{
 	static String serverHostname;
 	static DatagramSocket client;
 	static SimpleFTPClient simpleClient;
-
 	static String filename;
 	static int windowSize ;
 	static int MSS;
-
 	static List<DataPacket> window ;
 	static byte[] mssData;
 	static int mssCount;
@@ -79,8 +67,9 @@ public class SimpleFTPClient implements Runnable{
 	static int sequenceNum;
 	static TimerTask timerTask ;
 	static Timer timer;
-	/*
-	 *  
+
+	/**
+	 * 
 	 *  Reads data byte by byte from the file
 	 *  Buffers the data locally 
 	 *  Sends one packet when it has MSS bytes of data
@@ -96,7 +85,6 @@ public class SimpleFTPClient implements Runnable{
 
 			DataPacket data = new DataPacket(mssData);
 			data.setSequenceNumber(sequenceNum);
-			//System.out.println("adding " + sequenceNum+" to window");
 			data.setChecksum(Utils.calcChecksum(data));
 			sequenceNum = sequenceNum+MSS;
 			window.add(data);
@@ -113,12 +101,12 @@ public class SimpleFTPClient implements Runnable{
 					e.printStackTrace();
 				}
 			}
-			//send -1 
+
+			//send Last packet with data 0
 			mssData = new byte[0];
 			data = new DataPacket(mssData);
 			endAckExpected = sequenceNum+MSS;
 			data.setSequenceNumber(sequenceNum);
-			//System.out.println("adding " + sequenceNum+" to window");
 			data.setChecksum(Utils.calcChecksum(data));
 			sequenceNum = sequenceNum+MSS;
 			window.add(data);
@@ -135,8 +123,6 @@ public class SimpleFTPClient implements Runnable{
 					e.printStackTrace();
 				}
 			}
-
-
 		}
 		else{
 			mssData[mssCount++] = buff[0];
@@ -144,13 +130,11 @@ public class SimpleFTPClient implements Runnable{
 				DataPacket data = new DataPacket(mssData);
 				data.setSequenceNumber(sequenceNum);
 				data.setChecksum(Utils.calcChecksum(data));
-				//System.out.println("adding " + sequenceNum+" to window");
 				sequenceNum = sequenceNum+MSS;
 				window.add(data);
 				mssCount = 0;
 				lastPktSent++;		
 				mssData = new byte[MSS];
-				
 				if(window.size()<= windowSize){
 					byte[] dataArr = Utils.serializePacket(data);
 					InetAddress ipAddr;
@@ -158,7 +142,6 @@ public class SimpleFTPClient implements Runnable{
 						ipAddr = InetAddress.getByName(serverHostname);
 						DatagramPacket dataPacket = new DatagramPacket(dataArr, dataArr.length,ipAddr,portNum);
 						client.send(dataPacket);
-						
 					} catch (UnknownHostException e) {
 						e.printStackTrace();
 					} catch (IOException e) {
@@ -175,7 +158,9 @@ public class SimpleFTPClient implements Runnable{
 		return 1;
 	}
 
-
+	/**
+	 * Main method to send the packets
+	 */
 	private static void rdt_send(){
 		FileInputStream input = null;
 		try {
@@ -186,7 +171,6 @@ public class SimpleFTPClient implements Runnable{
 				res = input.read(buff);
 				goBackN(buff, false);
 			}
-			//System.out.println("File Read");
 			goBackN(null, true);
 
 		} catch (FileNotFoundException e) {
@@ -206,7 +190,7 @@ public class SimpleFTPClient implements Runnable{
 
 	/**
 	 * 
-	 * @param args
+	 * main method for Client
 	 */
 	public static void main (String[] args){
 		try{
@@ -236,7 +220,9 @@ public class SimpleFTPClient implements Runnable{
 		}
 	}
 
-
+	/**
+	 * Initialize variables
+	 */
 	private static void init() {
 		mssData = new byte[MSS];
 		window = new ArrayList<DataPacket>();
@@ -245,7 +231,6 @@ public class SimpleFTPClient implements Runnable{
 		lastPktSent = -1;
 		firstPktInWindow = 0;
 		endAckExpected = -1;
-
 		Thread t = new Thread(simpleClient);
 		t.start();
 	}
@@ -270,22 +255,17 @@ public class SimpleFTPClient implements Runnable{
 					timer.cancel();
 					//slide the window
 					//synchronized (window) {
-						while(firstPktInWindow < lastAckRcvd && window.size()>0){
-							//System.out.println("removing " + firstPktInWindow + " from window = " + window.get(0).getSequenceNumber());
-							window.remove(0);
-							if(window.size()>0){
-								//System.out.println("first pkt in window: " + window.get(0).getSequenceNumber());
-							}
-							firstPktInWindow+=MSS;
-						}
-					//}					
+					while(firstPktInWindow < lastAckRcvd && window.size()>0){
+						//System.out.println("removing " + firstPktInWindow + " from window = " + window.get(0).getSequenceNumber());
+						window.remove(0);
+						firstPktInWindow+=MSS;
+					}
 					timerTask = new GoBackNTimerTask();
 					timer = new Timer(true);
 					timer.scheduleAtFixedRate(timerTask, 100, 100);
 				}
 			}
 		} catch (IOException e) {
-
 			e.printStackTrace();
 		}
 	}

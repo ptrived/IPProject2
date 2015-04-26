@@ -8,6 +8,12 @@ import java.security.NoSuchAlgorithmException;
 
 
 public class Utils {
+	
+	/**
+	 * Util method to calculate checksum
+	 * @param packet
+	 * @return
+	 */
 	public static byte[] calcChecksum(DataPacket packet){
 		MessageDigest md = null;
 		try {
@@ -22,6 +28,11 @@ public class Utils {
 		return md.digest();
 	}
 
+	/**
+	 * Deserialize the received byte[] to PacketData
+	 * @param packetData
+	 * @return
+	 */
 	public static Object deserializePacket(byte[] packetData)
 	{
 		try
@@ -38,6 +49,11 @@ public class Utils {
 		return null;
 	}
 
+	/**
+	 * Serialize the DataPacket to byte[]
+	 * @param packet
+	 * @return
+	 */
 	public static byte[] serializePacket(DataPacket packet)
 	{
 		try
@@ -57,7 +73,12 @@ public class Utils {
 		return null;
 
 	}
-
+	
+	/**
+	 * Serialize the AckHeader to byte[]
+	 * @param ack
+	 * @return
+	 */
 	public static byte[] serializeAck(AckHeader ack)
 	{
 		try

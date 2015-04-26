@@ -21,6 +21,5 @@ public class AckHeader implements Serializable{
 	}
 	public byte[] getType() {
 		return type;
-	}
-	
+	}	
 }
