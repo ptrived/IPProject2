@@ -83,7 +83,7 @@ class SelectiveARQTimerTask extends TimerTask{
  *
  */
 public class SelectiveARQClient implements Runnable{
-	static int portNum;
+	static int portNum=7735;
 	static String serverHostname;
 	static DatagramSocket client;
 	static SelectiveARQClient selectiveClient;
@@ -104,15 +104,15 @@ public class SelectiveARQClient implements Runnable{
 
 	public static void main(String[] args){
 		try{
-			serverHostname = args[1];
-			int portInput = Integer.parseInt(args[2]);
+			serverHostname = args[0];
+			int portInput = Integer.parseInt(args[1]);
 			if(portInput!=portNum){
 				System.out.println("Invalid Server Port Number");
 				System.exit(1);
 			}
-			filename = args[3];
-			windowSize = Integer.parseInt(args[4]);
-			MSS = Integer.parseInt(args[5]);
+			filename = args[2];
+			windowSize = Integer.parseInt(args[3]);
+			MSS = Integer.parseInt(args[4]);
 			//			serverHostname = "localhost";
 			//			portNum = 7735;
 			//			filename = "F:\\123.txt";
