@@ -1,3 +1,4 @@
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -60,7 +61,7 @@ public class SimpleFTPServer {
 			}
 			//			filename = "124.txt";
 			//			probabilityFactor = 0.25;
-			output = new FileOutputStream(filename);
+			output = new FileOutputStream(new File(filename),true);
 			nextSeqNum = 0;
 			if(probabilityFactor < 0 || probabilityFactor > 1){
 				System.out.println("Probability Factor is not within the valid range[0-1]");
@@ -68,13 +69,15 @@ public class SimpleFTPServer {
 			}
 			socket = new DatagramSocket(portNum);
 			System.out.println("Server is up");
-			while(true){
-				int bufferSize = 4096;
+			int bufferSize = 65536;
+			while(true){				
+				output = new FileOutputStream(new File(filename),true);
 				byte[] buffer = new byte[bufferSize];
 				DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
 				socket.receive(packet);
 				if(MSS==0){
 					MSS = packet.getLength()-153;
+					//bufferSize = packet.getLength();
 				}
 				DataPacket data = (DataPacket) Utils.deserializePacket(packet.getData());
 				double r = probabilisticLossService();
@@ -90,12 +93,13 @@ public class SimpleFTPServer {
 							byte[] ack = Utils.serializeAck(ackData);
 							DatagramPacket ackPacket = new DatagramPacket(ack, ack.length,packet.getAddress(),packet.getPort());
 							socket.send(ackPacket);
-							System.out.println("Rcvd : " + rcvdSeqNum+" Ack for : " +nextSeqNum);
+							//System.out.println("Rcvd : " + rcvdSeqNum+" Ack for : " +nextSeqNum);
 							System.out.println("File copied to disk");	
 							System.exit(1);
 						}
 						if(verifyCheckSum(data)==1){
 							output.write(data.getData());
+							//output.flush();
 							nextSeqNum=nextSeqNum+MSS;
 						}
 					}
@@ -104,7 +108,7 @@ public class SimpleFTPServer {
 					byte[] ack = Utils.serializeAck(ackData);
 					DatagramPacket ackPacket = new DatagramPacket(ack, ack.length,packet.getAddress(),packet.getPort());
 					socket.send(ackPacket);
-					System.out.println("Rcvd : " + rcvdSeqNum+" Ack for : " +nextSeqNum);
+					//System.out.println("Rcvd : " + rcvdSeqNum+" Ack for : " +nextSeqNum);
 
 				}
 
@@ -124,7 +128,7 @@ public class SimpleFTPServer {
 		calcChecksum = Utils.calcChecksum(data);
 		//System.out.println("RcvdCheckSum = "+rcvdCheckSum+" CalcCheckSum = "+calcCheckSum);
 		if(Arrays.equals(data.getChecksum(),calcChecksum)){
-			System.out.println("CheckSum Equals");
+			//System.out.println("CheckSum Equals");
 			return 1;
 		}
 		return 0;
