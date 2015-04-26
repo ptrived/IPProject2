@@ -7,7 +7,9 @@ import java.nio.ByteBuffer;
 
 /**
  * 
- * To start the Server :
+ * @author Ritwikaroyc
+ * 
+ * command to start the Server :
  * Simple_ftp_server server-port file-name p
  * file-name : name of the file where the data will be written
  * p : packet loss probability
@@ -37,27 +39,26 @@ public class SimpleFTPServer {
 		num = 0 + (double)(Math.random()*1);
 		return num;
 	}
-	/*
-	 * Simple_ftp_server server-port file-name p
-	 */
 	public static void main(String args[]){
 		FileOutputStream output = null;
 		try {
-			int serverPort = Integer.parseInt(args[1]);	// this should always be 7735
-			//int serverPort = 7735;
+			//int serverPort = Integer.parseInt(args[1]);	// this should always be 7735
+			int serverPort = 7735;
 			if(serverPort!=portNum){
 				System.out.println("Entered port number is wrong");
 				System.exit(1);
 			}
-			filename = args[2];
-			probabilityFactor = Double.parseDouble(args[3]);
-			if(probabilityFactor < 0 || probabilityFactor > 1){
-				System.out.println("Probability Factor is not within the valid range[0-1]");
-				System.exit(1);
-			}
-			//filename = "F:\\124.txt";
-			//probabilityFactor = 0.5;
+			//			filename = args[2];
+			//			probabilityFactor = Double.parseDouble(args[3]);
+			//			if(probabilityFactor < 0 || probabilityFactor > 1){
+			//				System.out.println("Probability Factor is not within the valid range[0-1]");
+			//				System.exit(1);
+			//			}
+			filename = "F:\\124.txt";
 			output = new FileOutputStream(filename);
+
+			probabilityFactor = 0.5;
+
 			nextSeqNum = 0;
 			if(probabilityFactor < 0 || probabilityFactor > 1){
 				System.out.println("Probability Factor is not within the valid range[0-1]");
@@ -65,14 +66,13 @@ public class SimpleFTPServer {
 			}
 			socket = new DatagramSocket(portNum);
 			System.out.println("Server is up");
-			int bufferSize = 65536;
 			while(true){
+				int bufferSize = 4096;
 				byte[] buffer = new byte[bufferSize];
 				DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
 				socket.receive(packet);
 				if(MSS==0){
 					MSS = packet.getLength()-153;
-					bufferSize = MSS;
 				}
 				DataPacket data = (DataPacket) Utils.deserializePacket(packet.getData());
 				double r = probabilisticLossService();

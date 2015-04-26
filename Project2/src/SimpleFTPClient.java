@@ -133,7 +133,7 @@ public class SimpleFTPClient implements Runnable{
 				window.add(data);
 				mssCount = 0;
 				lastPktSent++;		
-
+				
 				if(window.size()<= windowSize){
 					byte[] dataArr = Utils.serializePacket(data);
 					InetAddress ipAddr;
@@ -195,20 +195,20 @@ public class SimpleFTPClient implements Runnable{
 	 */
 	public static void main (String[] args){
 		try{
-			serverHostname = args[1];
-			int portInput = Integer.parseInt(args[2]);
-			if(portInput!=portNum){
-				System.out.println("Invalid Server Port Number");
-				System.exit(1);
-			}
-			filename = args[3];
-			windowSize = Integer.parseInt(args[4]);
-			MSS = Integer.parseInt(args[5]);
-			//			serverHostname = "localhost";
-			//			portNum = 7735;
-			//			filename = "F:\\123.txt";
-			//			windowSize = 4;
-			//			MSS = 1000;
+			//			serverHostname = args[1];
+			//			int portInput = Integer.parseInt(args[2]);
+			//			if(portInput!=portNum){
+			//				System.out.println("Invalid Server Port Number");
+			//				System.exit(1);
+			//			}
+			//			filename = args[3];
+			//			windowSize = Integer.parseInt(args[4]);
+			//			MSS = Integer.parseInt(args[5]);
+			serverHostname = "localhost";
+			portNum = 7735;
+			filename = "F:\\123.txt";
+			windowSize = 16;
+			MSS = 256;
 			sequenceNum =0;
 			client = new DatagramSocket();
 			System.out.println("Connected to server");
@@ -261,7 +261,7 @@ public class SimpleFTPClient implements Runnable{
 							firstPktInWindow+=MSS;
 						}
 					}
-
+					
 					timerTask = new GoBackNTimerTask();
 					timer = new Timer(true);
 					timer.scheduleAtFixedRate(timerTask, 1000, 1000);
