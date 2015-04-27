@@ -20,19 +20,19 @@ class GoBackNTimerTask extends TimerTask{
 	@Override
 	public void run() {	
 
-		System.out.println("Timeout, sequence number = "+SimpleFTPClient.window.get(0).getSequenceNumber());
-		for(int i=0; i<SimpleFTPClient.windowSize; i++){
-			if(i >= SimpleFTPClient.window.size()){
+		System.out.println("Timeout, sequence number = "+SimpleFTPClientBackup.window.get(0).getSequenceNumber());
+		for(int i=0; i<SimpleFTPClientBackup.windowSize; i++){
+			if(i >= SimpleFTPClientBackup.window.size()){
 				break;
 			}
-			DataPacket packet = SimpleFTPClient.window.get(i);
+			DataPacket packet = SimpleFTPClientBackup.window.get(i);
 			packet.setChecksum(Utils.calcChecksum(packet));
 			byte[] dataArr = Utils.serializePacket(packet);
 			InetAddress ipAddr;
 			try {
-				ipAddr = InetAddress.getByName(SimpleFTPClient.serverHostname);
-				DatagramPacket dataPacket = new DatagramPacket(dataArr, dataArr.length,ipAddr,SimpleFTPClient.portNum);
-				SimpleFTPClient.client.send(dataPacket);				
+				ipAddr = InetAddress.getByName(SimpleFTPClientBackup.serverHostname);
+				DatagramPacket dataPacket = new DatagramPacket(dataArr, dataArr.length,ipAddr,SimpleFTPClientBackup.portNum);
+				SimpleFTPClientBackup.client.send(dataPacket);				
 			} catch (UnknownHostException e) {
 				e.printStackTrace();
 			} catch (IOException e) {
@@ -48,11 +48,11 @@ class GoBackNTimerTask extends TimerTask{
  * command to start the client: SimpleFTPClient server_host_name server-port file-name N MSS
  * 
  */
-public class SimpleFTPClient implements Runnable{
+public class SimpleFTPClientBackup implements Runnable{
 	static int portNum=7735;
 	static String serverHostname;
 	static DatagramSocket client;
-	static SimpleFTPClient simpleClient;
+	static SimpleFTPClientBackup simpleClient;
 	static String filename;
 	static int windowSize ;
 	static int MSS;
@@ -211,7 +211,7 @@ public class SimpleFTPClient implements Runnable{
 			sequenceNum =0;
 			client = new DatagramSocket();
 			System.out.println("Connected to server");
-			simpleClient = new SimpleFTPClient();
+			simpleClient = new SimpleFTPClientBackup();
 			init();
 			startTime = System.currentTimeMillis();
 			rdt_send();			
@@ -246,7 +246,7 @@ public class SimpleFTPClient implements Runnable{
 				int ackRcvd = ackData.getSequenceNumber();
 				if(ackRcvd == endAckExpected ){
 					long endTime = System.currentTimeMillis();
-					float time = (endTime - SimpleFTPClient.startTime);
+					float time = (endTime - SimpleFTPClientBackup.startTime);
 					System.out.println("File transfer completed \nTime to transfer : "+(time/1000)+" Sec");					
 					System.exit(1);
 				}
