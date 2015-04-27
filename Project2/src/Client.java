@@ -5,39 +5,75 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Iterator;
+import java.util.Map.Entry;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.TreeMap;
+
+/*class SimpleClientWindow{
+	DataPacket data;
+	Boolean ackRcvd;
+	public SimpleClientWindow(DataPacket data){
+		this.data =  data;
+		ackRcvd = false;
+	}
+	public DataPacket getData() {
+		return data;
+	}
+	public void setData(DataPacket data) {
+		this.data = data;
+	}
+	public Boolean getAckRcvd() {
+		return ackRcvd;
+	}
+	public void setAckRcvd(Boolean ackRcvd) {
+		this.ackRcvd = ackRcvd;
+	}
+
+}*/
 
 class GoBackNTimerTaskNew extends TimerTask{
 	@Override
 	public void run() {	
 		synchronized(Client.window){
-			System.out.println("Timeout, sequence number = "+Client.window.get(Client.firstPktInWindow).getSequenceNumber());
-			int num = Client.firstPktInWindow;
-			for(int i=0; i<Client.windowSize; i++){
-				if(i >= Client.window.size()){
-					break;
+			System.out.println("Timeout, sequence number = "+Client.window.firstKey());
+			int num = Client.window.firstKey();
+			int count = 0;
+			while(count < Client.windowSize && Client.window.containsKey(num)){
+				DataPacket packet = Client.window.get(num);
+				byte[] dataArr = Utils.serializePacket(packet);
+				InetAddress ipAddr;
+				try {
+					ipAddr = InetAddress.getByName(Client.serverHostname);
+					DatagramPacket dataPacket = new DatagramPacket(dataArr, dataArr.length,ipAddr,Client.portNum);
+					Client.client.send(dataPacket);		
+					num += Client.MSS;
+					count++;
+				} catch (UnknownHostException e) {
+					e.printStackTrace();
+				} catch (IOException e) {
+					e.printStackTrace();
 				}
-				if(Client.window.containsKey(num)){
-					DataPacket packet = Client.window.get(num);
-					//packet.setChecksum(Utils.calcChecksum(packet));
-					byte[] dataArr = Utils.serializePacket(packet);
-					InetAddress ipAddr;
-					try {
-						ipAddr = InetAddress.getByName(Client.serverHostname);
-						DatagramPacket dataPacket = new DatagramPacket(dataArr, dataArr.length,ipAddr,Client.portNum);
-						Client.client.send(dataPacket);		
-						num += Client.MSS;
-					} catch (UnknownHostException e) {
-						e.printStackTrace();
-					} catch (IOException e) {
-						e.printStackTrace();
-					}
-				}
-				
 			}
+			/*Iterator<Entry<Integer, SimpleClientWindow>> it = Client.window.entrySet().iterator();
+			while(it.hasNext() && count < Client.windowSize){
+				Entry<Integer, SimpleClientWindow> entry = it.next();
+				SimpleClientWindow window = entry.getValue();
+				DataPacket packet = window.getData();
+				byte[] dataArr = Utils.serializePacket(packet);
+				InetAddress ipAddr;
+				try {
+					ipAddr = InetAddress.getByName(Client.serverHostname);
+					DatagramPacket dataPacket = new DatagramPacket(dataArr, dataArr.length,ipAddr,Client.portNum);
+					Client.client.send(dataPacket);		
+					//num += Client.MSS;
+				} catch (UnknownHostException e) {
+					e.printStackTrace();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}*/
 		}
 	}
 }
@@ -50,7 +86,7 @@ public class Client implements Runnable {
 	static String filename;
 	static int windowSize ;
 	static int MSS;
-	static Map<Integer, DataPacket> window ;
+	static TreeMap<Integer, DataPacket> window ;
 	static byte[] mssData;
 	static int mssCount;
 	static int lastAckRcvd;
@@ -67,7 +103,7 @@ public class Client implements Runnable {
 	 */
 	private static void init() {
 		mssData = new byte[MSS];
-		window = new HashMap<Integer, DataPacket>();
+		window = new TreeMap<Integer, DataPacket>();
 		mssCount = 0;
 		lastAckRcvd = -1;
 		lastPktSent = -1;
@@ -145,9 +181,11 @@ public class Client implements Runnable {
 
 			DataPacket data = new DataPacket(mssData);
 			data.setSequenceNumber(sequenceNum);
+			window.put(sequenceNum, data);
 			data.setChecksum(Utils.calcChecksum(data));
 			sequenceNum = sequenceNum+MSS;
-			window.put(sequenceNum, data);
+			
+			
 			//window.add(data);
 			if(window.size() < windowSize){
 				byte[] dataArr = Utils.serializePacket(data);
@@ -169,8 +207,10 @@ public class Client implements Runnable {
 			endAckExpected = sequenceNum+MSS;
 			data.setSequenceNumber(sequenceNum);
 			data.setChecksum(Utils.calcChecksum(data));
-			sequenceNum = sequenceNum+MSS;
 			window.put(sequenceNum, data);
+			sequenceNum = sequenceNum+MSS;
+			//element = new SimpleClientWindow(data);
+			
 			if(window.size() < windowSize){
 				byte[] dataArr = Utils.serializePacket(data);
 				InetAddress ipAddr;
@@ -191,8 +231,10 @@ public class Client implements Runnable {
 				DataPacket data = new DataPacket(mssData);
 				data.setSequenceNumber(sequenceNum);
 				data.setChecksum(Utils.calcChecksum(data));
-				sequenceNum = sequenceNum+MSS;
 				window.put(sequenceNum, data);
+				sequenceNum = sequenceNum+MSS;
+				//SimpleClientWindow element = new SimpleClientWindow(data);
+				
 				mssCount = 0;
 				lastPktSent++;		
 				mssData = new byte[MSS];
@@ -217,8 +259,8 @@ public class Client implements Runnable {
 			}
 		}
 		//return 1;
-	
-		
+
+
 	}
 
 	@Override
@@ -231,24 +273,22 @@ public class Client implements Runnable {
 				client.receive(ackPacket);
 				AckHeader ackData = (AckHeader) Utils.deserializePacket(ackPacket.getData());
 				int ackRcvd = ackData.getSequenceNumber();
-				//System.out.println("Recv ack : " + ackRcvd);
+				//System.out.println("Recv ack : " + ackRcvd + " last ack rcvd :" + lastAckRcvd + " firstpkt :" + firstPktInWindow  + " window size :" + window.size() );
 				if(ackRcvd == endAckExpected ){
 					long endTime = System.currentTimeMillis();
 					float time = (endTime - Client.startTime);
 					System.out.println("File transfer completed \nTime to transfer : "+(time/1000)+" Sec");					
 					System.exit(1);
 				}
-
-				if(ackRcvd > lastAckRcvd){
+				
+				if(ackRcvd > window.firstKey()){
 					lastAckRcvd = ackRcvd;
 					timer.cancel();
-					//slide the window
 					synchronized (window) {
 						while(firstPktInWindow < lastAckRcvd && window.size()>0){
 
 							window.remove(firstPktInWindow);
-
-							firstPktInWindow+=MSS;
+							firstPktInWindow = window.firstKey();
 
 						}
 					}
@@ -256,6 +296,23 @@ public class Client implements Runnable {
 					timer = new Timer(true);
 					timer.scheduleAtFixedRate(timerTask, 100, 100);
 				}
+				/*if(ackRcvd > lastAckRcvd){
+					lastAckRcvd = ackRcvd;
+					timer.cancel();
+					//slide the window
+					synchronized (window) {
+						while(firstPktInWindow < lastAckRcvd && window.size()>0){
+
+							window.remove(firstPktInWindow);
+							firstPktInWindow = window.firstKey();
+							//firstPktInWindow+=MSS;
+
+						}
+					}
+					timerTask = new GoBackNTimerTaskNew();
+					timer = new Timer(true);
+					timer.scheduleAtFixedRate(timerTask, 100, 100);
+				}*/
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
