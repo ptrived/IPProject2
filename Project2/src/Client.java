@@ -5,8 +5,6 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.Iterator;
-import java.util.Map.Entry;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.TreeMap;
@@ -56,24 +54,6 @@ class GoBackNTimerTaskNew extends TimerTask{
 					e.printStackTrace();
 				}
 			}
-			/*Iterator<Entry<Integer, SimpleClientWindow>> it = Client.window.entrySet().iterator();
-			while(it.hasNext() && count < Client.windowSize){
-				Entry<Integer, SimpleClientWindow> entry = it.next();
-				SimpleClientWindow window = entry.getValue();
-				DataPacket packet = window.getData();
-				byte[] dataArr = Utils.serializePacket(packet);
-				InetAddress ipAddr;
-				try {
-					ipAddr = InetAddress.getByName(Client.serverHostname);
-					DatagramPacket dataPacket = new DatagramPacket(dataArr, dataArr.length,ipAddr,Client.portNum);
-					Client.client.send(dataPacket);		
-					//num += Client.MSS;
-				} catch (UnknownHostException e) {
-					e.printStackTrace();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			}*/
 		}
 	}
 }
@@ -184,8 +164,8 @@ public class Client implements Runnable {
 			window.put(sequenceNum, data);
 			data.setChecksum(Utils.calcChecksum(data));
 			sequenceNum = sequenceNum+MSS;
-			
-			
+
+
 			//window.add(data);
 			if(window.size() < windowSize){
 				byte[] dataArr = Utils.serializePacket(data);
@@ -210,7 +190,7 @@ public class Client implements Runnable {
 			window.put(sequenceNum, data);
 			sequenceNum = sequenceNum+MSS;
 			//element = new SimpleClientWindow(data);
-			
+
 			if(window.size() < windowSize){
 				byte[] dataArr = Utils.serializePacket(data);
 				InetAddress ipAddr;
@@ -234,7 +214,7 @@ public class Client implements Runnable {
 				window.put(sequenceNum, data);
 				sequenceNum = sequenceNum+MSS;
 				//SimpleClientWindow element = new SimpleClientWindow(data);
-				
+
 				mssCount = 0;
 				lastPktSent++;		
 				mssData = new byte[MSS];
@@ -280,7 +260,6 @@ public class Client implements Runnable {
 					System.out.println("File transfer completed \nTime to transfer : "+(time/1000)+" Sec");					
 					System.exit(1);
 				}
-				
 				if(ackRcvd > window.firstKey()){
 					lastAckRcvd = ackRcvd;
 					timer.cancel();
@@ -289,35 +268,15 @@ public class Client implements Runnable {
 
 							window.remove(firstPktInWindow);
 							firstPktInWindow = window.firstKey();
-
 						}
 					}
 					timerTask = new GoBackNTimerTaskNew();
 					timer = new Timer(true);
 					timer.scheduleAtFixedRate(timerTask, 100, 100);
 				}
-				/*if(ackRcvd > lastAckRcvd){
-					lastAckRcvd = ackRcvd;
-					timer.cancel();
-					//slide the window
-					synchronized (window) {
-						while(firstPktInWindow < lastAckRcvd && window.size()>0){
-
-							window.remove(firstPktInWindow);
-							firstPktInWindow = window.firstKey();
-							//firstPktInWindow+=MSS;
-
-						}
-					}
-					timerTask = new GoBackNTimerTaskNew();
-					timer = new Timer(true);
-					timer.scheduleAtFixedRate(timerTask, 100, 100);
-				}*/
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-
 	}
-
 }
